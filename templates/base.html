@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>{{ app_name }}</title>
+
+<link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+<body>
+
+<div id="topbar">
+
+<div class="logo">
+
+🚗 {{ app_name }}
+
+</div>
+
+<div class="version">
+
+v{{ version }}
+
+</div>
+
+</div>
+
+<div id="content">
+
+{% block content %}
+
+{% endblock %}
+
+</div>
+
+<script src="/static/js/dashboard.js"></script>
+
+</body>
+
+</html>

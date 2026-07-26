@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.tmp
+.env
+data/videos/
+data/events/
+data/snapshots/

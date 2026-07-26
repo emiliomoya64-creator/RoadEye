@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="dashboard">
+
+<div class="video">
+
+<img
+id="stream"
+src="/video_feed"
+style="width:100%;border-radius:10px;"
+>
+
+</div>
+
+<div class="status">
+
+<div class="card">
+
+<h3>Sistema</h3>
+
+<table>
+
+<tr><td>Estado</td><td>Online</td></tr>
+
+<tr><td>Cámara</td><td>OK</td></tr>
+
+<tr><td>GPS</td><td>OFF</td></tr>
+
+<tr><td>Grabación</td><td>OFF</td></tr>
+
+<tr><td>ADAS</td><td>OFF</td></tr>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,15 @@
+APP_NAME = "PiDash ADAS"
+
+HOST = "0.0.0.0"
+PORT = 5000
+
+WIDTH = 1280
+HEIGHT = 720
+FPS = 30
+
+JPEG_QUALITY = 80
+
+DEBUG = False
+
+VERSION = "0.1.0"
+

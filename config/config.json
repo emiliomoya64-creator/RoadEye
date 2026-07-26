@@ -1,0 +1,50 @@
+{
+    "project": {
+        "name": "PiDash ADAS",
+        "version": "1.0.0"
+    },
+
+    "web": {
+        "host": "0.0.0.0",
+        "port": 5000
+    },
+
+    "camera": {
+
+        "front": {
+            "enabled": true,
+            "type": "csi",
+            "sensor": "imx219",
+            "width": 1280,
+            "height": 720,
+            "fps": 30
+        },
+
+        "rear": {
+            "enabled": false,
+            "type": "usb",
+            "device": "/dev/video0"
+        },
+
+        "left": {
+            "enabled": false,
+            "type": "usb",
+            "device": "/dev/video1"
+        },
+
+        "right": {
+            "enabled": false,
+            "type": "usb",
+            "device": "/dev/video2"
+        }
+
+    },
+
+    "recording": {
+
+        "enabled": false,
+        "minutes": 5
+
+    }
+
+}
