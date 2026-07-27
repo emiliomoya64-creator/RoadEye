@@ -15,9 +15,6 @@ app = FastAPI(title="RoadEye")
 
 app.include_router(router)
 
-for r in app.routes:
-    print(r.path)
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
@@ -26,7 +23,6 @@ camera = CameraService()
 camera.start()
 
 last_time = time.time()
-fps = 0
 
 
 @app.get("/")
@@ -41,7 +37,6 @@ async def index(request: Request):
 def generate():
 
     global last_time
-    global fps
 
     while True:
 
@@ -53,13 +48,17 @@ def generate():
 
         now = time.time()
 
-        fps = 1 / (now - last_time)
+        elapsed = now - last_time
+        fps = 0 if elapsed <= 0 else 1 / elapsed
 
         last_time = now
 
         frame = overlay.draw(frame, fps)
 
-        _, jpeg = cv2.imencode(".jpg", frame)
+        ok, jpeg = cv2.imencode(".jpg", frame)
+
+        if not ok:
+            continue
 
         yield (
             b'--frame\r\n'
