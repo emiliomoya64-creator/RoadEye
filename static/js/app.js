@@ -1,18 +1,34 @@
 async function actualizar() {
 
-    let r = await fetch("/api/status");
-
-    let d = await r.json();
+    const r = await fetch("/api/status");
+    const d = await r.json();
 
     document.getElementById("estado").innerHTML =
+        "🎥 " + (d.recording ? "GRABANDO" : "PARADO") + "<br>" +
+        "💻 CPU " + d.cpu + "%<br>" +
+        "🌡️ TEMP " + d.temp + "°C<br>" +
+        "💾 DISCO " + d.disk + "%<br>" +
+        "📹 VÍDEOS " + d.videos;
 
-        "CPU " + d.cpu + "%<br>" +
+    const start = document.getElementById("start");
+    const stop = document.getElementById("stop");
 
-        "TEMP " + d.temp + "°C<br>" +
+    if (d.recording) {
 
-        "SSD " + d.disk + "%<br>" +
+        start.disabled = true;
+        stop.disabled = false;
 
-        "VIDEOS " + d.videos;
+        start.style.opacity = "0.4";
+        stop.style.opacity = "1";
+
+    } else {
+
+        start.disabled = false;
+        stop.disabled = true;
+
+        start.style.opacity = "1";
+        stop.style.opacity = "0.4";
+    }
 
 }
 

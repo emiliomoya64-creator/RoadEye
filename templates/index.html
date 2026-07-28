@@ -17,15 +17,11 @@
 <body>
 
     <div class="header">
-
         🚗 RoadEye
-
     </div>
 
     <div class="video">
-
         <img src="/video">
-
     </div>
 
     <div class="cards">
@@ -42,7 +38,11 @@
 
             <h2>Grabación</h2>
 
-            <button id="rec">● REC</button>
+            <button id="start">🟢 GRABAR</button>
+
+            <br><br>
+
+            <button id="stop">🔴 PARAR</button>
 
         </div>
 
@@ -55,6 +55,22 @@
         </div>
 
     </div>
+
+    <script>
+
+        document.getElementById("start").onclick = async () => {
+
+            await fetch("/api/record/start");
+
+        };
+
+        document.getElementById("stop").onclick = async () => {
+
+            await fetch("/api/record/stop");
+
+        };
+
+    </script>
 
     <script src="/static/js/app.js"></script>
 

@@ -4,69 +4,135 @@ import subprocess
 import cv2
 import psutil
 
+from config import (
+    HUD_HEIGHT,
+    COLOR_BACKGROUND,
+    COLOR_SEPARATOR,
+    COLOR_WHITE,
+)
+
 from core.system_state import system_state
+
+from hud.widgets.rec import rec_widget
+from hud.widgets.gps import gps_widget
+from hud.widgets.speed import speed_widget
+from hud.widgets.road import road_widget
+from hud.widgets.system import system_widget
 
 
 class Overlay:
 
+    def __init__(self):
+
+        self.blink = False
+        self.last_blink = datetime.datetime.now()
+
     def cpu_temp(self):
 
         try:
+
             temp = subprocess.check_output(
                 ["vcgencmd", "measure_temp"]
             ).decode()
 
-            return temp.split("=")[1].replace("'C\n", "")
+            return float(
+                temp.split("=")[1].replace("'C\n", "")
+            )
 
         except:
-            return "--"
+
+            return 0
 
     def draw(self, frame, fps):
 
         h, w = frame.shape[:2]
 
+        # --------------------------
+        # Actualizar estado sistema
+        # --------------------------
+
         system_state.set("cpu", psutil.cpu_percent())
         system_state.set("temp", self.cpu_temp())
 
-        cv2.rectangle(frame, (0, 0), (w, 70), (20, 20, 20), -1)
+        # --------------------------
+        # Fondo HUD
+        # --------------------------
 
-        now = datetime.datetime.now().strftime("%H:%M:%S")
-
-        rec = "REC ●" if system_state.get("recording") else "REC ○"
-
-        gps = "GPS FIX" if system_state.get("gps_fix") else "GPS ---"
-
-        texto1 = (
-            f"{rec}     "
-            f"{gps}     "
-            f"{system_state.get('speed'):5.1f} km/h"
+        cv2.rectangle(
+            frame,
+            (0, 0),
+            (w, HUD_HEIGHT),
+            COLOR_BACKGROUND,
+            -1
         )
 
-        texto2 = (
-            f"{now}     "
-            f"FPS:{fps:4.1f}     "
-            f"CPU:{system_state.get('cpu'):2.0f}%     "
-            f"TEMP:{system_state.get('temp')}"
+        cv2.line(
+            frame,
+            (0, HUD_HEIGHT),
+            (w, HUD_HEIGHT),
+            COLOR_SEPARATOR,
+            1
         )
+
+        # --------------------------
+        # Parpadeo
+        # --------------------------
+
+        now = datetime.datetime.now()
+
+        if (now - self.last_blink).total_seconds() >= 0.5:
+
+            self.blink = not self.blink
+            self.last_blink = now
+
+        # --------------------------
+        # Fecha y hora
+        # --------------------------
 
         cv2.putText(
             frame,
-            texto1,
-            (15, 25),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
-            (0, 255, 0),
+            now.strftime("%d/%m/%Y %H:%M:%S"),
+            (15, 28),
+            cv2.FONT_HERSHEY_DUPLEX,
+            0.70,
+            COLOR_WHITE,
             2
         )
 
-        cv2.putText(
+        # --------------------------
+        # Widgets
+        # --------------------------
+
+        rec_widget.draw(
             frame,
-            texto2,
-            (15, 55),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
-            (255, 255, 255),
-            2
+            system_state.get("recording")
+        )
+
+        gps_widget.draw(
+            frame,
+            system_state.get("gps_fix"),
+            system_state.get("satellites")
+        )
+
+        speed_widget.draw(
+            frame,
+            system_state.get("speed"),
+            system_state.get("speed_limit"),
+            self.blink
+        )
+
+        road_widget.draw(
+            frame,
+            system_state.get("road"),
+            system_state.get("road_type"),
+            system_state.get("lanes")
+        )
+
+        system_widget.draw(
+            frame,
+            fps,
+            system_state.get("cpu"),
+            system_state.get("temp")
         )
 
         return frame

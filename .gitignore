@@ -1,10 +1,14 @@
+# Videos grabados
+videos/
+
+# Entorno Python
 .venv/
+
+# Cachés
 __pycache__/
 *.pyc
-*.pyo
+
+# Temporales
 *.log
-*.tmp
-.env
-data/videos/
-data/events/
-data/snapshots/
+
+# Iconos generados si no queremos versionarlos
