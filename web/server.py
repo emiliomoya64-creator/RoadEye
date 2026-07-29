@@ -1,4 +1,3 @@
-
 import time
 
 import cv2
@@ -12,7 +11,7 @@ from recorder.recorder_service import RecorderService
 from gps.gps_service import GPSService
 from gps.map_service import MapService
 from core.frame_buffer import frame_buffer
-from hud.overlay import overlay
+from hud.render import render
 
 import web.api as api
 
@@ -76,7 +75,7 @@ def generate():
 
         last_time = now
 
-        frame = overlay.draw(frame, fps)
+        frame = render(frame)
 
         ok, jpeg = cv2.imencode(".jpg", frame)
 
