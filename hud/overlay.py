@@ -1,141 +1,43 @@
 import datetime
-import subprocess
-
-import cv2
-import psutil
-
-from config import (
-    HUD_HEIGHT,
-    COLOR_BACKGROUND,
-    COLOR_SEPARATOR,
-    COLOR_WHITE,
-)
 
 from core.system_state import system_state
-
-from hud.widgets.rec import rec_widget
-from hud.widgets.gps import gps_widget
-from hud.widgets.speed import speed_widget
-from hud.widgets.road import road_widget
-from hud.widgets.system import system_widget
+from hud.hud_engine import hud
+from hud.layout import Layout
 
 
-class Overlay:
+class HUDOverlay:
 
-    def __init__(self):
+    def draw(self, frame):
 
-        self.blink = False
-        self.last_blink = datetime.datetime.now()
-
-    def cpu_temp(self):
-
-        try:
-
-            temp = subprocess.check_output(
-                ["vcgencmd", "measure_temp"]
-            ).decode()
-
-            return float(
-                temp.split("=")[1].replace("'C\n", "")
-            )
-
-        except:
-
-            return 0
-
-    def draw(self, frame, fps):
-
-        h, w = frame.shape[:2]
-
-        # --------------------------
-        # Actualizar estado sistema
-        # --------------------------
-
-        system_state.set("cpu", psutil.cpu_percent())
-        system_state.set("temp", self.cpu_temp())
-
-        # --------------------------
-        # Fondo HUD
-        # --------------------------
-
-        cv2.rectangle(
-            frame,
-            (0, 0),
-            (w, HUD_HEIGHT),
-            COLOR_BACKGROUND,
-            -1
-        )
-
-        cv2.line(
-            frame,
-            (0, HUD_HEIGHT),
-            (w, HUD_HEIGHT),
-            COLOR_SEPARATOR,
-            1
-        )
-
-        # --------------------------
-        # Parpadeo
-        # --------------------------
-
-        now = datetime.datetime.now()
-
-        if (now - self.last_blink).total_seconds() >= 0.5:
-
-            self.blink = not self.blink
-            self.last_blink = now
-
-        # --------------------------
         # Fecha y hora
-        # --------------------------
+        ahora = datetime.datetime.now()
 
-        cv2.putText(
+        hud.shadow_text(
             frame,
-            now.strftime("%d/%m/%Y %H:%M:%S"),
-            (15, 28),
-            cv2.FONT_HERSHEY_DUPLEX,
-            0.70,
-            COLOR_WHITE,
-            2
+            ahora.strftime("%d/%m/%Y   %H:%M:%S"),
+            Layout.DATE,
+            scale=0.65,
         )
 
-        # --------------------------
-        # Widgets
-        # --------------------------
+        # -----------------------------
+        # REC
+        # -----------------------------
 
-        rec_widget.draw(
+        color = (0, 0, 255) if system_state.recording else (90, 90, 90)
+
+        hud.filled_circle(
             frame,
-            system_state.get("recording")
+            Layout.REC,
+            8,
+            color,
         )
 
-        gps_widget.draw(
+        hud.shadow_text(
             frame,
-            system_state.get("gps_fix"),
-            system_state.get("satellites")
+            "REC",
+            (Layout.REC[0] + 18, Layout.REC[1] + 6),
+            scale=0.65,
         )
 
-        speed_widget.draw(
-            frame,
-            system_state.get("speed"),
-            system_state.get("speed_limit"),
-            self.blink
-        )
 
-        road_widget.draw(
-            frame,
-            system_state.get("road"),
-            system_state.get("road_type"),
-            system_state.get("lanes")
-        )
-
-        system_widget.draw(
-            frame,
-            fps,
-            system_state.get("cpu"),
-            system_state.get("temp")
-        )
-
-        return frame
-
-
-overlay = Overlay()
+overlay = HUDOverlay()

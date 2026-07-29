@@ -2,7 +2,7 @@ class Layout:
 
     DATE = (15, 28)
 
-    REC = (15, 65)
+    REC = (18, 65)
 
     GPS = (150, 65)
 
