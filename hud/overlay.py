@@ -9,9 +9,22 @@ class HUDOverlay:
 
     def draw(self, frame):
 
-        # ---------------------------------
+        # ==========================================
+        # Actualizar el layout según la resolución
+        # ==========================================
+
+        Layout.update(frame)
+
+        # ==========================================
+        # Barras superior e inferior
+        # ==========================================
+
+        hud.draw_top_bar(frame)
+        hud.draw_bottom_bar(frame)
+
+        # ==========================================
         # Fecha y hora
-        # ---------------------------------
+        # ==========================================
 
         ahora = datetime.datetime.now()
 
@@ -22,9 +35,9 @@ class HUDOverlay:
             scale=0.65,
         )
 
-        # ---------------------------------
+        # ==========================================
         # REC
-        # ---------------------------------
+        # ==========================================
 
         rec_color = (0, 0, 255) if system_state.recording else (90, 90, 90)
 
@@ -42,9 +55,9 @@ class HUDOverlay:
             scale=0.65,
         )
 
-        # ---------------------------------
+        # ==========================================
         # GPS
-        # ---------------------------------
+        # ==========================================
 
         x, y = Layout.GPS
 
@@ -70,9 +83,9 @@ class HUDOverlay:
             color=gps_color,
         )
 
-        # ---------------------------------
+        # ==========================================
         # VELOCIDAD
-        # ---------------------------------
+        # ==========================================
 
         velocidad = int(system_state.speed)
 
@@ -80,24 +93,52 @@ class HUDOverlay:
             frame,
             str(velocidad),
             Layout.SPEED,
-            scale=2.0,
-            thickness=4,
+            scale=1.15,
+            thickness=3,
         )
 
         hud.shadow_text(
             frame,
             "km/h",
-            (Layout.SPEED[0] + 95, Layout.SPEED[1] + 5),
-            scale=0.75,
+            (Layout.SPEED[0] + 70, Layout.SPEED[1] + 3),
+            scale=0.55,
         )
 
+        # ==========================================
+        # Límite de velocidad
+        # ==========================================
+
         if system_state.speed_limit > 0:
+
             hud.speed_sign(
                 frame,
                 Layout.SPEED_SIGN[0],
                 Layout.SPEED_SIGN[1],
                 system_state.speed_limit,
             )
+
+        # ==========================================
+        # Carretera
+        # ==========================================
+
+        road = getattr(system_state, "road", "---")
+        road_type = getattr(system_state, "highway", "---")
+        lanes = getattr(system_state, "lanes", "?")
+
+        hud.shadow_text(
+            frame,
+            road,
+            Layout.ROAD,
+            scale=0.75,
+        )
+
+        hud.shadow_text(
+            frame,
+            f"{road_type} · {lanes} carriles",
+            Layout.ROAD_INFO,
+            scale=0.55,
+            color=(210, 210, 210),
+        )
 
 
 overlay = HUDOverlay()

@@ -83,7 +83,6 @@ class MapService:
             print(f"🛣 {road}")
 
         except Exception:
-
             pass
 
     # -------------------------------------------------
@@ -129,6 +128,23 @@ out tags;
             highway = tags.get("highway", "?")
             oneway = tags.get("oneway", "no")
 
+            road_types = {
+                "motorway": "Autovía",
+                "trunk": "Vía rápida",
+                "primary": "Carretera principal",
+                "secondary": "Carretera secundaria",
+                "tertiary": "Carretera local",
+                "residential": "Calle urbana",
+                "living_street": "Zona residencial",
+                "service": "Vía de servicio",
+                "unclassified": "Carretera",
+            }
+
+            road_type = road_types.get(
+                highway,
+                highway.replace("_", " ").capitalize()
+            )
+
             try:
                 speed = int(speed.split()[0])
             except:
@@ -136,17 +152,16 @@ out tags;
 
             system_state.set("speed_limit", speed)
             system_state.set("lanes", lanes)
-            system_state.set("highway", highway)
+            system_state.set("road_type", road_type)
             system_state.set("oneway", oneway)
 
             print(
                 f"🚦 {speed} km/h | "
-                f"{highway} | "
+                f"{road_type} | "
                 f"{lanes} carriles"
             )
 
         except Exception:
-
             pass
 
     # -------------------------------------------------
@@ -183,7 +198,6 @@ out tags;
             self.last_lon = lon
 
             self.reverse_geocode(lat, lon)
-
             self.get_road_info(lat, lon)
 
             time.sleep(5)

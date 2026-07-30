@@ -1,8 +1,17 @@
 import cv2
 import numpy as np
 
+from hud.layout import Layout
+
 
 class HUDEngine:
+
+    # ----------------------------------------------------
+
+    def scale(self, value):
+        return max(1, int(value * Layout.S))
+
+    # ----------------------------------------------------
 
     def shadow_text(
         self,
@@ -18,10 +27,13 @@ class HUDEngine:
 
         x, y = pos
 
+        scale *= Layout.S
+        thickness = max(1, int(thickness * Layout.S))
+
         cv2.putText(
             frame,
             text,
-            (x + 2, y + 2),
+            (x + self.scale(2), y + self.scale(2)),
             font,
             scale,
             shadow,
@@ -53,7 +65,7 @@ class HUDEngine:
         cv2.circle(
             frame,
             center,
-            radius,
+            self.scale(radius),
             color,
             -1,
             cv2.LINE_AA
@@ -70,6 +82,9 @@ class HUDEngine:
         border,
         border_size=4,
     ):
+
+        radius = self.scale(radius)
+        border_size = self.scale(border_size)
 
         cv2.circle(
             frame,
@@ -98,7 +113,7 @@ class HUDEngine:
         y,
         w,
         h,
-        color=(20, 20, 20),
+        color=(20,20,20),
         alpha=0.45,
     ):
 
@@ -116,9 +131,37 @@ class HUDEngine:
             overlay,
             alpha,
             frame,
-            1 - alpha,
+            1-alpha,
             0,
             frame
+        )
+
+    # ----------------------------------------------------
+
+    def draw_top_bar(self, frame):
+
+        self.transparent_rect(
+            frame,
+            0,
+            0,
+            Layout.W,
+            Layout.TOP_BAR,
+            (15,15,15),
+            0.45
+        )
+
+    # ----------------------------------------------------
+
+    def draw_bottom_bar(self, frame):
+
+        self.transparent_rect(
+            frame,
+            0,
+            Layout.H - Layout.BOTTOM_BAR,
+            Layout.W,
+            Layout.BOTTOM_BAR,
+            (15,15,15),
+            0.45
         )
 
     # ----------------------------------------------------
@@ -138,19 +181,22 @@ class HUDEngine:
             frame,
             (x, y),
             28,
-            (255, 255, 255),
-            (0, 0, 255),
+            (255,255,255),
+            (0,0,255),
             5
         )
 
         self.shadow_text(
             frame,
             str(limit),
-            (x - 13, y + 8),
-            0.75,
-            (0, 0, 0),
-            2,
-            (255, 255, 255)
+            (
+                x - self.scale(13),
+                y + self.scale(8)
+            ),
+            scale=0.75,
+            color=(0,0,0),
+            thickness=2,
+            shadow=(255,255,255)
         )
 
     # ----------------------------------------------------
@@ -167,19 +213,25 @@ class HUDEngine:
 
         for i in range(4):
 
-            h = 6 + i * 6
+            h = self.scale(6 + i * 6)
 
             color = (
-                (0, 255, 0)
+                (0,255,0)
                 if i < barras
                 else
-                (70, 70, 70)
+                (70,70,70)
             )
 
             cv2.rectangle(
                 frame,
-                (x + i * 9, y - h),
-                (x + i * 9 + 6, y),
+                (
+                    x + self.scale(i * 9),
+                    y - h
+                ),
+                (
+                    x + self.scale(i * 9 + 6),
+                    y
+                ),
                 color,
                 -1
             )
