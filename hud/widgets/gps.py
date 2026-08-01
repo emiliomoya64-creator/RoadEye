@@ -6,17 +6,18 @@ from hud.layout import Layout
 
 class GPSWidget:
     """
-    Widget de estado GPS.
+    Widget visual del GPS.
 
     Muestra:
-    - Cuatro barras de intensidad.
-    - Separador vertical.
+    - Cuatro barras de señal.
     - Estado GPS.
     - Número de satélites.
 
-    Colores:
-    - Verde cuando existe posición GPS.
-    - Gris cuando todavía no existe posición.
+    Verde:
+        GPS con posición válida.
+
+    Gris:
+        GPS sin posición válida.
     """
 
     MAX_BARS = 4
@@ -27,35 +28,35 @@ class GPSWidget:
 
         x, y = Layout.GPS
 
-        self._draw_signal_bars(
-            frame,
-            x,
-            y,
-            gps_fix,
-            satellites,
+        self._draw_bars(
+            frame=frame,
+            x=x,
+            y=y,
+            gps_fix=gps_fix,
+            satellites=satellites,
         )
 
-        separator_x = x + hud.scale(90)
+        separator_x = x + hud.scale(88)
 
         self._draw_separator(
-            frame,
-            separator_x,
-            y,
+            frame=frame,
+            x=separator_x,
+            y=y,
         )
 
-        self._draw_status(
-            frame,
-            separator_x,
-            y,
-            gps_fix,
-            satellites,
+        self._draw_text(
+            frame=frame,
+            x=separator_x + hud.scale(22),
+            y=y,
+            gps_fix=gps_fix,
+            satellites=satellites,
         )
 
     # -------------------------------------------------
-    # Barras de intensidad
+    # Barras de señal
     # -------------------------------------------------
 
-    def _draw_signal_bars(
+    def _draw_bars(
         self,
         frame,
         x,
@@ -63,7 +64,7 @@ class GPSWidget:
         gps_fix,
         satellites,
     ):
-        active_bars = self._calculate_active_bars(
+        active_bars = self._active_bars(
             gps_fix,
             satellites,
         )
@@ -72,23 +73,23 @@ class GPSWidget:
         bar_gap = hud.scale(9)
 
         for index in range(self.MAX_BARS):
-            bar_height = hud.scale(12 + index * 10)
+            height = hud.scale(13 + index * 10)
 
-            bar_x1 = x + index * (bar_width + bar_gap)
-            bar_y1 = y - bar_height
+            x1 = x + index * (bar_width + bar_gap)
+            y1 = y - height
+            x2 = x1 + bar_width
+            y2 = y
 
-            bar_x2 = bar_x1 + bar_width
-            bar_y2 = y
-
-            if index < active_bars:
-                color = (0, 220, 0)
-            else:
-                color = (75, 75, 75)
+            color = (
+                (0, 210, 0)
+                if index < active_bars
+                else (70, 70, 70)
+            )
 
             cv2.rectangle(
                 frame,
-                (bar_x1, bar_y1),
-                (bar_x2, bar_y2),
+                (x1, y1),
+                (x2, y2),
                 color,
                 -1,
                 cv2.LINE_AA,
@@ -103,32 +104,30 @@ class GPSWidget:
             frame,
             (
                 x,
-                y - hud.scale(43),
+                y - hud.scale(45),
             ),
             (
                 x,
-                y + hud.scale(8),
+                y + hud.scale(9),
             ),
-            (100, 100, 100),
+            (105, 105, 105),
             max(1, hud.scale(2)),
             cv2.LINE_AA,
         )
 
     # -------------------------------------------------
-    # Texto GPS
+    # Texto
     # -------------------------------------------------
 
-    def _draw_status(
+    def _draw_text(
         self,
         frame,
-        separator_x,
+        x,
         y,
         gps_fix,
         satellites,
     ):
-        text_x = separator_x + hud.scale(23)
-
-        gps_color = (
+        title_color = (
             (245, 245, 245)
             if gps_fix
             else (145, 145, 145)
@@ -138,41 +137,44 @@ class GPSWidget:
             frame,
             "GPS",
             (
-                text_x,
+                x,
                 y - hud.scale(13),
             ),
-            scale=0.61,
+            scale=0.60,
             thickness=2,
-            color=gps_color,
+            color=title_color,
         )
 
-        if gps_fix:
-            satellite_text = f"{satellites} SAT"
-        else:
-            satellite_text = "SIN FIJAR"
+        status_text = (
+            f"{satellites} SAT"
+            if gps_fix
+            else "SIN FIJAR"
+        )
+
+        status_color = (
+            (205, 205, 205)
+            if gps_fix
+            else (120, 120, 120)
+        )
 
         hud.shadow_text(
             frame,
-            satellite_text,
+            status_text,
             (
-                text_x,
-                y + hud.scale(13),
+                x,
+                y + hud.scale(14),
             ),
-            scale=0.42,
+            scale=0.43,
             thickness=1,
-            color=(
-                (205, 205, 205)
-                if gps_fix
-                else (120, 120, 120)
-            ),
+            color=status_color,
         )
 
     # -------------------------------------------------
-    # Cálculo de cobertura
+    # Intensidad según satélites
     # -------------------------------------------------
 
     @staticmethod
-    def _calculate_active_bars(gps_fix, satellites):
+    def _active_bars(gps_fix, satellites):
         if not gps_fix or satellites <= 0:
             return 0
 
@@ -190,7 +192,10 @@ class GPSWidget:
     @staticmethod
     def _safe_int(value):
         try:
-            return max(0, int(round(float(value))))
+            return max(
+                0,
+                int(round(float(value))),
+            )
         except (TypeError, ValueError):
             return 0
 

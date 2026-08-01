@@ -5,21 +5,23 @@ from hud.hud_engine import hud
 from hud.layout import Layout
 from hud.widgets.gps import gps_widget
 from hud.widgets.rec import rec_widget
+from hud.widgets.road import road_widget
+from hud.widgets.speed import speed_widget
 
 
 class HUDOverlay:
     """
-    Compone las diferentes partes del HUD sobre el frame.
+    Compone el HUD completo sobre cada frame.
 
-    Widgets ya independizados:
-    - Grabación.
+    Widgets independizados:
+    - REC.
     - GPS.
-
-    El resto se migrará progresivamente.
+    - Velocidad y límite.
+    - Información de carretera.
     """
 
     def draw(self, frame):
-        # Actualizar dimensiones y escala.
+        # Adaptar posiciones y tamaños a la resolución.
         Layout.update(frame)
 
         # Fondos superior e inferior.
@@ -33,7 +35,11 @@ class HUDOverlay:
         rec_widget.draw(
             frame,
             recording=bool(
-                getattr(system_state, "recording", False)
+                getattr(
+                    system_state,
+                    "recording",
+                    False,
+                )
             ),
         )
 
@@ -41,7 +47,11 @@ class HUDOverlay:
         gps_widget.draw(
             frame,
             gps_fix=bool(
-                getattr(system_state, "gps_fix", False)
+                getattr(
+                    system_state,
+                    "gps_fix",
+                    False,
+                )
             ),
             satellites=getattr(
                 system_state,
@@ -50,10 +60,40 @@ class HUDOverlay:
             ),
         )
 
-        # Elementos todavía integrados.
-        self._draw_speed(frame)
-        self._draw_speed_limit(frame)
-        self._draw_road(frame)
+        # Velocidad y límite.
+        speed_widget.draw(
+            frame,
+            speed=getattr(
+                system_state,
+                "speed",
+                0,
+            ),
+            speed_limit=getattr(
+                system_state,
+                "speed_limit",
+                0,
+            ),
+        )
+
+        # Información de carretera.
+        road_widget.draw(
+            frame,
+            road=getattr(
+                system_state,
+                "road",
+                "---",
+            ),
+            road_type=getattr(
+                system_state,
+                "road_type",
+                "---",
+            ),
+            lanes=getattr(
+                system_state,
+                "lanes",
+                "?",
+            ),
+        )
 
         return frame
 
@@ -69,112 +109,8 @@ class HUDOverlay:
             now.strftime("%d/%m/%Y   %H:%M:%S"),
             Layout.DATE,
             scale=0.65,
+            thickness=2,
         )
-
-    # -------------------------------------------------
-    # Velocidad
-    # -------------------------------------------------
-
-    def _draw_speed(self, frame):
-        speed = self._safe_int(
-            getattr(system_state, "speed", 0)
-        )
-
-        hud.shadow_text(
-            frame,
-            str(max(0, speed)),
-            Layout.SPEED,
-            scale=1.15,
-            thickness=3,
-        )
-
-        hud.shadow_text(
-            frame,
-            "km/h",
-            (
-                Layout.SPEED[0] + hud.scale(70),
-                Layout.SPEED[1] + hud.scale(3),
-            ),
-            scale=0.55,
-        )
-
-    # -------------------------------------------------
-    # Límite de velocidad
-    # -------------------------------------------------
-
-    def _draw_speed_limit(self, frame):
-        speed_limit = self._safe_int(
-            getattr(system_state, "speed_limit", 0)
-        )
-
-        if speed_limit <= 0:
-            return
-
-        hud.speed_sign(
-            frame,
-            Layout.SPEED_SIGN[0],
-            Layout.SPEED_SIGN[1],
-            speed_limit,
-        )
-
-    # -------------------------------------------------
-    # Información de carretera
-    # -------------------------------------------------
-
-    def _draw_road(self, frame):
-        road = (
-            getattr(system_state, "road", "---")
-            or "---"
-        )
-
-        road_type = (
-            getattr(system_state, "road_type", "---")
-            or "---"
-        )
-
-        lanes = (
-            getattr(system_state, "lanes", "?")
-            or "?"
-        )
-
-        hud.shadow_text(
-            frame,
-            road,
-            Layout.ROAD,
-            scale=0.75,
-        )
-
-        hud.shadow_text(
-            frame,
-            f"{road_type} · {self._format_lanes(lanes)}",
-            Layout.ROAD_INFO,
-            scale=0.55,
-            color=(210, 210, 210),
-        )
-
-    # -------------------------------------------------
-    # Utilidades
-    # -------------------------------------------------
-
-    @staticmethod
-    def _safe_int(value):
-        try:
-            return int(round(float(value)))
-        except (TypeError, ValueError):
-            return 0
-
-    @staticmethod
-    def _format_lanes(lanes):
-        try:
-            lanes_number = int(lanes)
-
-            if lanes_number == 1:
-                return "1 carril"
-
-            return f"{lanes_number} carriles"
-
-        except (TypeError, ValueError):
-            return f"{lanes} carriles"
 
 
 overlay = HUDOverlay()
