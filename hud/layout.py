@@ -7,38 +7,41 @@ class Layout:
         self.W = w
         self.H = h
 
-        # Escala respecto a FullHD
-        self.S = min(w / 1920.0, h / 1080.0)
+        # Escala respecto a Full HD
+        self.S = min(
+            w / 1920.0,
+            h / 1080.0
+        )
 
         # ==========================
         # Barra superior
         # ==========================
 
-        self.TOP_BAR = int(90 * self.S)
+        self.TOP_BAR = int(145 * self.S)
 
         self.DATE = (
-            int(30 * self.S),
-            int(42 * self.S)
+            int(35 * self.S),
+            int(52 * self.S)
         )
 
         self.REC = (
-            int(35 * self.S),
-            int(95 * self.S)
+            int(45 * self.S),
+            int(110 * self.S)
         )
 
         self.GPS = (
-            int(210 * self.S),
-            int(95 * self.S)
+            int(470 * self.S),
+            int(115 * self.S)
         )
 
         self.SPEED = (
-            w // 2 - int(30 * self.S),
-            int(82 * self.S)
+            w // 2 - int(45 * self.S),
+            int(105 * self.S)
         )
 
         self.SPEED_SIGN = (
-            w - int(75 * self.S),
-            int(74 * self.S)
+            w - int(85 * self.S),
+            int(85 * self.S)
         )
 
         # ==========================
