@@ -1,50 +1,93 @@
 {
     "project": {
-        "name": "PiDash ADAS",
-        "version": "1.0.0"
+        "name": "RoadEye",
+        "version_file": "VERSION",
+        "environment": "development"
     },
-
-    "web": {
-        "host": "0.0.0.0",
-        "port": 5000
-    },
-
     "camera": {
-
         "front": {
             "enabled": true,
             "type": "csi",
             "sensor": "imx219",
             "width": 1280,
             "height": 720,
+            "format": "RGB888",
             "fps": 30
         },
-
         "rear": {
             "enabled": false,
             "type": "usb",
             "device": "/dev/video0"
         },
-
         "left": {
             "enabled": false,
             "type": "usb",
             "device": "/dev/video1"
         },
-
         "right": {
             "enabled": false,
             "type": "usb",
             "device": "/dev/video2"
         }
-
     },
-
+    "render": {
+        "enabled": true,
+        "fps": 30
+    },
+    "display": {
+        "hdmi": {
+            "enabled": true,
+            "width": 1280,
+            "height": 720,
+            "fps": 30,
+            "connector": "HDMI-A-1",
+            "driver": "vc4"
+        }
+    },
+    "web": {
+        "enabled": true,
+        "host": "0.0.0.0",
+        "port": 8000,
+        "jpeg_quality": 85
+    },
+    "gps": {
+        "enabled": true,
+        "port": "/dev/serial0",
+        "baudrate": 9600,
+        "map_service": true
+    },
     "recording": {
-
         "enabled": false,
-        "minutes": 5
-
-    }
-
+        "folder": "videos",
+        "fps": 20,
+        "segment_seconds": 30,
+        "protect_events": true
+    },
+    "hud": {
+        "enabled": true,
+        "mode": "normal",
+        "show": {
+            "datetime": true,
+            "recording": true,
+            "gps": true,
+            "speed": true,
+            "speed_limit": true,
+            "road": true,
+            "system_debug": false
+        }
+    },
+    "adas": {
+        "enabled": false,
+        "lanes": false,
+        "vehicles": false,
+        "pedestrians": false,
+        "signs": false,
+        "collision_warning": false
+    },
+    "system": {
+        "timezone": "Europe/Madrid",
+        "log_level": "INFO",
+        "service_name": "roadeye.service"
+    },
+    "test": {}
 }

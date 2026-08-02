@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Resolver la ruta real aunque el comando se ejecute mediante
+# el enlace simbólico /usr/local/bin/roadeye.
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+PYTHON_BIN="${PROJECT_DIR}/.venv/bin/python"
+DOCTOR_SCRIPT="${PROJECT_DIR}/install/doctor.py"
+
+COMMAND="${1:-doctor}"
+
+case "$COMMAND" in
+    doctor)
+        if [[ ! -x "$PYTHON_BIN" ]]; then
+            echo "ERROR: No se encuentra el Python de RoadEye:"
+            echo "$PYTHON_BIN"
+            exit 1
+        fi
+
+        if [[ ! -f "$DOCTOR_SCRIPT" ]]; then
+            echo "ERROR: No se encuentra RoadEye Doctor:"
+            echo "$DOCTOR_SCRIPT"
+            exit 1
+        fi
+
+        exec "$PYTHON_BIN" "$DOCTOR_SCRIPT"
+        ;;
+
+    status)
+        exec systemctl status roadeye.service
+        ;;
+
+    logs)
+        exec journalctl -u roadeye.service -f
+        ;;
+
+    restart)
+        exec sudo systemctl restart roadeye.service
+        ;;
+
+    *)
+        echo "Uso:"
+        echo "  roadeye doctor"
+        echo "  roadeye status"
+        echo "  roadeye logs"
+        echo "  roadeye restart"
+        exit 1
+        ;;
+esac

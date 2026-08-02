@@ -1,66 +1,166 @@
-from threading import Thread
-import time
+from __future__ import annotations
+
+import logging
+from threading import Event, Thread
+from typing import Optional
 
 import requests
 
+from core.config_manager import config
 from core.system_state import system_state
 
 
+logger = logging.getLogger(__name__)
+
+
 class MapService:
+    """
+    Servicio cartográfico de RoadEye.
 
-    def __init__(self):
+    Obtiene mediante OpenStreetMap:
 
-        self.running = False
+    - nombre de la vía;
+    - ciudad;
+    - límite de velocidad;
+    - tipo de carretera;
+    - carriles;
+    - sentido único.
 
-        self.last_lat = None
-        self.last_lon = None
+    El servicio solo consulta cuando existe posición GPS válida.
+    """
 
-    def start(self):
+    NOMINATIM_URL = (
+        "https://nominatim.openstreetmap.org/reverse"
+    )
+
+    OVERPASS_URL = (
+        "https://overpass-api.de/api/interpreter"
+    )
+
+    USER_AGENT = "RoadEye"
+
+    def __init__(self) -> None:
+        self.enabled = bool(
+            config.get(
+                "gps.map_service",
+                True,
+            )
+        )
+
+        self.last_lat: Optional[float] = None
+        self.last_lon: Optional[float] = None
+
+        self._thread: Optional[Thread] = None
+        self._stop_event = Event()
+
+        self._session = requests.Session()
+
+        self._session.headers.update(
+            {
+                "User-Agent": self.USER_AGENT,
+            }
+        )
+
+    # ---------------------------------------------------------
+    # Estado
+    # ---------------------------------------------------------
+
+    @property
+    def running(self) -> bool:
+        return (
+            self._thread is not None
+            and self._thread.is_alive()
+            and not self._stop_event.is_set()
+        )
+
+    # ---------------------------------------------------------
+    # Inicio y parada
+    # ---------------------------------------------------------
+
+    def start(self) -> None:
+        if not self.enabled:
+            logger.info(
+                "MapService desactivado en config.json"
+            )
+            return
 
         if self.running:
             return
 
-        self.running = True
+        self._stop_event.clear()
 
-        Thread(
-            target=self.loop,
-            daemon=True
-        ).start()
+        self._thread = Thread(
+            target=self._loop,
+            name="roadeye-map-service",
+            daemon=True,
+        )
 
-        print("🗺 Map Service iniciado")
+        self._thread.start()
 
-    # -------------------------------------------------
+        logger.info(
+            "MapService iniciado"
+        )
 
-    def reverse_geocode(self, lat, lon):
+        print(
+            "🗺 Map Service iniciado"
+        )
 
-        try:
+    def stop(self) -> None:
+        self._stop_event.set()
 
-            r = requests.get(
-
-                "https://nominatim.openstreetmap.org/reverse",
-
-                params={
-                    "format": "jsonv2",
-                    "lat": lat,
-                    "lon": lon,
-                    "zoom": 18,
-                    "addressdetails": 1
-                },
-
-                headers={
-                    "User-Agent": "RoadEye"
-                },
-
-                timeout=5
-
+        if self._thread is not None:
+            self._thread.join(
+                timeout=3.0
             )
 
-            if r.status_code != 200:
+        self._thread = None
+
+        try:
+            self._session.close()
+        except Exception:
+            logger.debug(
+                "No se pudo cerrar la sesión de mapas",
+                exc_info=True,
+            )
+
+        logger.info(
+            "MapService detenido"
+        )
+
+    # ---------------------------------------------------------
+    # Geocodificación inversa
+    # ---------------------------------------------------------
+
+    def reverse_geocode(
+        self,
+        latitude: float,
+        longitude: float,
+    ) -> None:
+        try:
+            response = self._session.get(
+                self.NOMINATIM_URL,
+                params={
+                    "format": "jsonv2",
+                    "lat": latitude,
+                    "lon": longitude,
+                    "zoom": 18,
+                    "addressdetails": 1,
+                },
+                timeout=5,
+            )
+
+            if response.status_code != 200:
+                logger.warning(
+                    "Nominatim respondió con HTTP %d",
+                    response.status_code,
+                )
                 return
 
-            data = r.json()
-
-            address = data.get("address", {})
+            data = response.json()
+            address = data.get(
+                "address",
+                {},
+            )
 
             road = (
                 address.get("road")
@@ -77,56 +177,97 @@ class MapService:
                 or ""
             )
 
-            system_state.set("road", road)
-            system_state.set("city", city)
+            system_state.set(
+                "road",
+                road,
+            )
 
-            print(f"🛣 {road}")
+            system_state.set(
+                "city",
+                city,
+            )
+
+            print(
+                f"🛣 {road}"
+            )
+
+        except requests.RequestException:
+            logger.debug(
+                "No se pudo consultar Nominatim",
+                exc_info=True,
+            )
 
         except Exception:
-            pass
+            logger.exception(
+                "Error procesando la respuesta de Nominatim"
+            )
 
-    # -------------------------------------------------
+    # ---------------------------------------------------------
+    # Información de carretera
+    # ---------------------------------------------------------
 
-    def get_road_info(self, lat, lon):
-
-        try:
-
-            query = f"""
+    def get_road_info(
+        self,
+        latitude: float,
+        longitude: float,
+    ) -> None:
+        query = f"""
 [out:json][timeout:10];
 
-way(around:20,{lat},{lon})["highway"];
+way(around:20,{latitude},{longitude})["highway"];
 
 out tags;
 """
 
-            r = requests.post(
-
-                "https://overpass-api.de/api/interpreter",
-
+        try:
+            response = self._session.post(
+                self.OVERPASS_URL,
                 data=query,
-
-                headers={
-                    "User-Agent": "RoadEye"
-                },
-
-                timeout=10
-
+                timeout=10,
             )
 
-            if r.status_code != 200:
+            if response.status_code != 200:
+                logger.warning(
+                    "Overpass respondió con HTTP %d",
+                    response.status_code,
+                )
                 return
 
-            data = r.json()
+            data = response.json()
+            elements = data.get(
+                "elements",
+                [],
+            )
 
-            if len(data["elements"]) == 0:
+            if not elements:
                 return
 
-            tags = data["elements"][0]["tags"]
+            tags = elements[0].get(
+                "tags",
+                {},
+            )
 
-            speed = tags.get("maxspeed", "0")
-            lanes = tags.get("lanes", "?")
-            highway = tags.get("highway", "?")
-            oneway = tags.get("oneway", "no")
+            speed_limit = self._parse_speed(
+                tags.get(
+                    "maxspeed",
+                    "0",
+                )
+            )
+
+            lanes = tags.get(
+                "lanes",
+                "?",
+            )
+
+            highway = tags.get(
+                "highway",
+                "?",
+            )
+
+            oneway = tags.get(
+                "oneway",
+                "no",
+            )
 
             road_types = {
                 "motorway": "Autovía",
@@ -138,66 +279,156 @@ out tags;
                 "living_street": "Zona residencial",
                 "service": "Vía de servicio",
                 "unclassified": "Carretera",
+                "pedestrian": "Zona peatonal",
+                "footway": "Vía peatonal",
             }
 
             road_type = road_types.get(
                 highway,
-                highway.replace("_", " ").capitalize()
+                str(highway)
+                .replace("_", " ")
+                .capitalize(),
             )
 
-            try:
-                speed = int(speed.split()[0])
-            except:
-                speed = 0
+            system_state.set(
+                "speed_limit",
+                speed_limit,
+            )
 
-            system_state.set("speed_limit", speed)
-            system_state.set("lanes", lanes)
-            system_state.set("road_type", road_type)
-            system_state.set("oneway", oneway)
+            system_state.set(
+                "lanes",
+                lanes,
+            )
+
+            system_state.set(
+                "road_type",
+                road_type,
+            )
+
+            system_state.set(
+                "oneway",
+                oneway,
+            )
 
             print(
-                f"🚦 {speed} km/h | "
+                f"🚦 {speed_limit} km/h | "
                 f"{road_type} | "
                 f"{lanes} carriles"
             )
 
+        except requests.RequestException:
+            logger.debug(
+                "No se pudo consultar Overpass",
+                exc_info=True,
+            )
+
         except Exception:
-            pass
+            logger.exception(
+                "Error procesando la respuesta de Overpass"
+            )
 
-    # -------------------------------------------------
+    # ---------------------------------------------------------
+    # Bucle principal
+    # ---------------------------------------------------------
 
-    def loop(self):
-
-        while self.running:
-
-            if not system_state.get("gps_fix"):
-
-                time.sleep(2)
+    def _loop(self) -> None:
+        while not self._stop_event.is_set():
+            if not system_state.get(
+                "gps_fix"
+            ):
+                self._stop_event.wait(
+                    2.0
+                )
                 continue
 
-            lat = system_state.get("latitude")
-            lon = system_state.get("longitude")
+            latitude = float(
+                system_state.get(
+                    "latitude"
+                )
+                or 0
+            )
 
-            if lat == 0 or lon == 0:
+            longitude = float(
+                system_state.get(
+                    "longitude"
+                )
+                or 0
+            )
 
-                time.sleep(2)
+            if (
+                latitude == 0
+                or longitude == 0
+            ):
+                self._stop_event.wait(
+                    2.0
+                )
                 continue
 
-            if self.last_lat is not None:
-
-                if (
-                    abs(lat - self.last_lat) < 0.0002
+            if (
+                self.last_lat is not None
+                and self.last_lon is not None
+            ):
+                movement_is_small = (
+                    abs(
+                        latitude
+                        - self.last_lat
+                    )
+                    < 0.0002
                     and
-                    abs(lon - self.last_lon) < 0.0002
-                ):
+                    abs(
+                        longitude
+                        - self.last_lon
+                    )
+                    < 0.0002
+                )
 
-                    time.sleep(5)
+                if movement_is_small:
+                    self._stop_event.wait(
+                        5.0
+                    )
                     continue
 
-            self.last_lat = lat
-            self.last_lon = lon
+            self.last_lat = latitude
+            self.last_lon = longitude
 
-            self.reverse_geocode(lat, lon)
-            self.get_road_info(lat, lon)
+            self.reverse_geocode(
+                latitude,
+                longitude,
+            )
 
-            time.sleep(5)
+            if self._stop_event.is_set():
+                break
+
+            self.get_road_info(
+                latitude,
+                longitude,
+            )
+
+            self._stop_event.wait(
+                5.0
+            )
+
+    # ---------------------------------------------------------
+    # Utilidades
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def _parse_speed(
+        value,
+    ) -> int:
+        try:
+            first_value = str(
+                value
+            ).split()[0]
+
+            return max(
+                0,
+                int(first_value),
+            )
+
+        except (
+            IndexError,
+            TypeError,
+            ValueError,
+        ):
+            return 0

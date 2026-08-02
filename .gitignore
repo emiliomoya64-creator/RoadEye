@@ -15,3 +15,6 @@ __pycache__/
 
 # Informes locales de instalación
 install/roadeye-system-audit.txt
+
+# Copias de seguridad de RoadEye
+config/*.backup
