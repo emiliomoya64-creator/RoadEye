@@ -12,3 +12,6 @@ __pycache__/
 *.log
 
 # Iconos generados si no queremos versionarlos
+
+# Informes locales de instalación
+install/roadeye-system-audit.txt
