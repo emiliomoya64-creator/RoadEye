@@ -2,6 +2,32 @@
 
 Este documento recoge todos los cambios importantes realizados en el proyecto RoadEye.
 
+# 0.5.1-dev
+
+Estado: En desarrollo  
+Fecha de inicio: 2026-08-02
+
+## Arranque
+
+- Nuevo RoadEye BootManager.
+- Pantalla de inicio en HDMI.
+- Comprobaciones rápidas durante el arranque.
+- Estados visuales: espera, iniciando, OK, aviso y error.
+- StartupService integrado en ServiceManager.
+- HDMI inicia antes que la cámara para mostrar la pantalla inicial.
+- Transición automática desde BootManager hasta cámara y HUD.
+- Estado del arranque disponible en `/api/services`.
+
+## Comprobaciones de arranque
+
+- Configuración.
+- Almacenamiento.
+- Cámara IMX219.
+- GPS.
+- HDMI.
+- Red.
+- Versión de RoadEye.
+
 ---
 
 # 0.5.0

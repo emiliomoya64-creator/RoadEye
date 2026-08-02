@@ -84,6 +84,13 @@
         "signs": false,
         "collision_warning": false
     },
+    "startup": {
+        "enabled": true,
+        "splash_seconds": 1.2,
+        "ready_seconds": 1.8,
+        "check_delay_seconds": 0.3,
+        "publish_fps": 15
+    },
     "system": {
         "timezone": "Europe/Madrid",
         "log_level": "INFO",

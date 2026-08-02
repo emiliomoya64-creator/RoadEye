@@ -12,6 +12,7 @@ from display.hdmi_display_service import (
 from gps.gps_service import GPSService
 from gps.map_service import MapService
 from recorder.recorder_service import RecorderService
+from startup.startup_service import startup_service
 
 
 logger = logging.getLogger(__name__)
@@ -23,29 +24,64 @@ class RoadEyeServices:
 
     Orden de arranque:
 
-        10  Cámara
-        20  GPS
-        30  Mapas
-        40  Render
-        50  HDMI
-        60  Grabador
+        10  HDMI
+        20  Pantalla de arranque
+        30  Cámara
+        40  GPS
+        50  Mapas
+        60  Render
+        70  Grabador
 
-    La parada se ejecuta automáticamente en orden inverso.
+    HDMI se inicia primero para poder mostrar BootManager.
+
+    StartupService se ejecuta antes de CameraService y RenderService,
+    evitando que el vídeo normal sobrescriba la pantalla inicial.
+
+    La parada se realiza automáticamente en orden inverso.
     """
 
     def __init__(self) -> None:
         self.manager = ServiceManager()
 
+        self.hdmi = hdmi_display_service
+        self.startup = startup_service
         self.camera = CameraService()
         self.gps = GPSService()
         self.maps = MapService()
         self.render = render_service
-        self.hdmi = hdmi_display_service
         self.recorder = RecorderService()
 
         self._register_services()
 
     def _register_services(self) -> None:
+        self.manager.register(
+            "hdmi",
+            self.hdmi,
+            description="Pantalla HDMI",
+            enabled=bool(
+                config.get(
+                    "display.hdmi.enabled",
+                    True,
+                )
+            ),
+            critical=False,
+            start_order=10,
+        )
+
+        self.manager.register(
+            "startup",
+            self.startup,
+            description="Pantalla de arranque",
+            enabled=bool(
+                config.get(
+                    "startup.enabled",
+                    True,
+                )
+            ),
+            critical=True,
+            start_order=20,
+        )
+
         self.manager.register(
             "camera",
             self.camera,
@@ -57,7 +93,7 @@ class RoadEyeServices:
                 )
             ),
             critical=True,
-            start_order=10,
+            start_order=30,
         )
 
         self.manager.register(
@@ -71,7 +107,7 @@ class RoadEyeServices:
                 )
             ),
             critical=False,
-            start_order=20,
+            start_order=40,
         )
 
         self.manager.register(
@@ -85,7 +121,7 @@ class RoadEyeServices:
                 )
             ),
             critical=False,
-            start_order=30,
+            start_order=50,
         )
 
         self.manager.register(
@@ -99,21 +135,7 @@ class RoadEyeServices:
                 )
             ),
             critical=True,
-            start_order=40,
-        )
-
-        self.manager.register(
-            "hdmi",
-            self.hdmi,
-            description="Pantalla HDMI",
-            enabled=bool(
-                config.get(
-                    "display.hdmi.enabled",
-                    True,
-                )
-            ),
-            critical=False,
-            start_order=50,
+            start_order=60,
         )
 
         self.manager.register(
@@ -122,7 +144,7 @@ class RoadEyeServices:
             description="Grabador Dashcam",
             enabled=True,
             critical=False,
-            start_order=60,
+            start_order=70,
         )
 
     def start_all(self) -> bool:
@@ -154,6 +176,10 @@ class RoadEyeServices:
 
     def summary(self) -> dict:
         summary = self.manager.summary()
+
+        summary["startup"] = (
+            self.startup.status()
+        )
 
         summary["recorder"] = (
             self.recorder.status()
