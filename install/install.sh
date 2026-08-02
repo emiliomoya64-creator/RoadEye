@@ -220,6 +220,53 @@ prepare_project_permissions() {
 }
 
 
+current_boot_id() {
+    cat /proc/sys/kernel/random/boot_id
+}
+
+
+mark_reboot_required() {
+    current_boot_id > "$REBOOT_REQUIRED_FILE"
+
+    chown \
+        "${TARGET_USER}:${TARGET_GROUP}" \
+        "$REBOOT_REQUIRED_FILE"
+
+    success \
+        "Primer reinicio marcado como obligatorio."
+}
+
+
+reboot_is_pending() {
+    if [[ ! -f "$REBOOT_REQUIRED_FILE" ]]; then
+        return 1
+    fi
+
+    local marked_boot_id
+    local active_boot_id
+
+    marked_boot_id="$(
+        tr -d '[:space:]' \
+            < "$REBOOT_REQUIRED_FILE"
+    )"
+
+    active_boot_id="$(
+        current_boot_id
+    )"
+
+    if [[ -z "$marked_boot_id" ]]; then
+        return 0
+    fi
+
+    if [[ "$marked_boot_id" == "$active_boot_id" ]]; then
+        return 0
+    fi
+
+    rm -f "$REBOOT_REQUIRED_FILE"
+
+    return 1
+}
+
 install_system_dependencies() {
     step "1/6 - DEPENDENCIAS DEL SISTEMA"
 
@@ -233,16 +280,11 @@ configure_raspberry_pi() {
     SUDO_USER="$TARGET_USER" \
         "$CONFIGURE_SCRIPT"
 
-    touch "$REBOOT_REQUIRED_FILE"
-
-    chown \
-        "${TARGET_USER}:${TARGET_GROUP}" \
-        "$REBOOT_REQUIRED_FILE"
+    mark_reboot_required
 
     success \
         "Configuración de arranque preparada."
 }
-
 
 install_python_environment() {
     step "3/6 - ENTORNO PYTHON"
@@ -312,6 +354,36 @@ run_final_checks() {
     success \
         "roadeye.service habilitado al arrancar."
 
+    if [[ -x "${PROJECT_DIR}/.venv/bin/python" ]]; then
+        success \
+            "Python virtual disponible."
+    else
+        fatal \
+            "No se encuentra el Python virtual."
+    fi
+
+    if command -v roadeye >/dev/null 2>&1; then
+        success \
+            "Comando global roadeye disponible."
+    else
+        fatal \
+            "El comando roadeye no está disponible."
+    fi
+
+    if reboot_is_pending; then
+        warning \
+            "El primer reinicio está pendiente."
+
+        success \
+            "Instalación preparada correctamente para reiniciar."
+
+        printf '\n'
+        printf 'RoadEye se comprobará después del reinicio.\n'
+        printf '\n'
+
+        return
+    fi
+
     if ! systemctl is-active \
         --quiet \
         roadeye.service
@@ -335,31 +407,13 @@ run_final_checks() {
         http://127.0.0.1:8000/api/status \
         >/dev/null
     then
-        warning \
-            "La API web todavía no responde. " \
-            "Puede necesitar el reinicio pendiente."
-    else
-        success \
-            "API web disponible en el puerto 8000."
+        fatal \
+            "La API web no responde en el puerto 8000."
     fi
 
-    if [[ -x "${PROJECT_DIR}/.venv/bin/python" ]]; then
-        success \
-            "Python virtual disponible."
-    else
-        fatal \
-            "No se encuentra el Python virtual."
-    fi
-
-    if command -v roadeye >/dev/null 2>&1; then
-        success \
-            "Comando global roadeye disponible."
-    else
-        fatal \
-            "El comando roadeye no está disponible."
-    fi
+    success \
+        "API web disponible en el puerto 8000."
 }
-
 
 run_doctor() {
     step "ROAD EYE DOCTOR"
