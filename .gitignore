@@ -18,3 +18,6 @@ install/roadeye-system-audit.txt
 
 # Copias de seguridad de RoadEye
 config/*.backup
+
+# Estado local del instalador
+.roadeye-reboot-required

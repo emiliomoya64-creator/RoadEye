@@ -15,28 +15,13 @@ import web.api as api
 from core.config_manager import config
 from core.display_buffer import display_buffer
 from core.roadeye_services import roadeye_services
-from recorder.recorder_service import RecorderService
 
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------
-# Grabador
-# ---------------------------------------------------------
-#
-# El grabador todavía no entra en ServiceManager porque su
-# método start() significa iniciar una grabación.
-# Lo migraremos después separando inicialización y grabación.
-# ---------------------------------------------------------
+api.recorder = roadeye_services.recorder
 
-recorder = RecorderService()
-api.recorder = recorder
-
-
-# ---------------------------------------------------------
-# Ciclo de vida de RoadEye
-# ---------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -56,10 +41,6 @@ async def lifespan(app: FastAPI):
 
         roadeye_services.stop_all()
 
-
-# ---------------------------------------------------------
-# Aplicación FastAPI
-# ---------------------------------------------------------
 
 app = FastAPI(
     title=str(
@@ -88,10 +69,6 @@ templates = Jinja2Templates(
 )
 
 
-# ---------------------------------------------------------
-# Página principal
-# ---------------------------------------------------------
-
 @app.get("/")
 async def index(
     request: Request,
@@ -102,28 +79,12 @@ async def index(
     )
 
 
-# ---------------------------------------------------------
-# Estado de servicios
-# ---------------------------------------------------------
-
 @app.get("/api/services")
 async def services_status():
-    """
-    Devuelve el estado interno del ServiceManager.
-    """
-
     return roadeye_services.summary()
 
 
-# ---------------------------------------------------------
-# Streaming web
-# ---------------------------------------------------------
-
 def generate():
-    """
-    Genera MJPEG desde el mismo display_buffer utilizado por HDMI.
-    """
-
     jpeg_quality = int(
         config.get(
             "web.jpeg_quality",

@@ -1,0 +1,30 @@
+[Unit]
+Description=RoadEye Dashcam
+After=network-online.target systemd-udev-settle.service
+Wants=network-online.target systemd-udev-settle.service
+
+[Service]
+Type=simple
+
+User=emilio
+Group=emilio
+SupplementaryGroups=video render dialout
+
+WorkingDirectory=/home/emilio/PiDash
+
+Environment=PYTHONUNBUFFERED=1
+Environment=GST_DEBUG=2
+
+ExecStartPre=+/usr/bin/chvt 2
+ExecStartPre=/bin/sleep 3
+
+ExecStart=/home/emilio/PiDash/.venv/bin/python /home/emilio/PiDash/app.py
+
+Restart=always
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

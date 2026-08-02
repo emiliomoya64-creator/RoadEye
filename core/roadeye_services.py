@@ -11,6 +11,7 @@ from display.hdmi_display_service import (
 )
 from gps.gps_service import GPSService
 from gps.map_service import MapService
+from recorder.recorder_service import RecorderService
 
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,9 @@ class RoadEyeServices:
         30  Mapas
         40  Render
         50  HDMI
+        60  Grabador
 
-    La parada se realiza automáticamente en orden inverso.
+    La parada se ejecuta automáticamente en orden inverso.
     """
 
     def __init__(self) -> None:
@@ -37,9 +39,9 @@ class RoadEyeServices:
         self.camera = CameraService()
         self.gps = GPSService()
         self.maps = MapService()
-
         self.render = render_service
         self.hdmi = hdmi_display_service
+        self.recorder = RecorderService()
 
         self._register_services()
 
@@ -114,6 +116,15 @@ class RoadEyeServices:
             start_order=50,
         )
 
+        self.manager.register(
+            "recorder",
+            self.recorder,
+            description="Grabador Dashcam",
+            enabled=True,
+            critical=False,
+            start_order=60,
+        )
+
     def start_all(self) -> bool:
         logger.info(
             "Arrancando servicios principales de RoadEye"
@@ -142,7 +153,13 @@ class RoadEyeServices:
         return self.manager.status()
 
     def summary(self) -> dict:
-        return self.manager.summary()
+        summary = self.manager.summary()
+
+        summary["recorder"] = (
+            self.recorder.status()
+        )
+
+        return summary
 
     def _log_status(self) -> None:
         for name, status in self.status().items():
