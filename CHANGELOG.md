@@ -2,9 +2,13 @@
 
 Este documento recoge todos los cambios importantes realizados en el proyecto RoadEye.
 
-# 0.5.1-dev
+# 0.5.1
 
-Estado: En desarrollo  
+## Hito
+
+RoadEye deja de ser un proyecto de desarrollo dependiente de una única Raspberry y pasa a ser un sistema completamente instalable y reproducible desde GitHub mediante un único instalador.
+
+Estado: Estable  
 Fecha de inicio: 2026-08-02
 
 ## Arranque
@@ -17,6 +21,15 @@ Fecha de inicio: 2026-08-02
 - HDMI inicia antes que la cámara para mostrar la pantalla inicial.
 - Transición automática desde BootManager hasta cámara y HUD.
 - Estado del arranque disponible en `/api/services`.
+
+## Instalación reproducible
+
+- Instalación validada desde cero en una Raspberry Pi 4.
+- Raspberry Pi OS limpio preparado mediante el instalador maestro.
+- Detección correcta del primer reinicio obligatorio.
+- El instalador ya no presenta un falso error antes del primer reinicio.
+- Arranque automático de `roadeye.service` después de reiniciar.
+- BootManager, cámara, HDMI, GPS, web y grabador verificados en hardware real.
 
 ## Comprobaciones de arranque
 

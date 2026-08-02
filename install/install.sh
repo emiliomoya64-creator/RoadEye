@@ -44,6 +44,7 @@ TARGET_USER="${SUDO_USER:-emilio}"
 TARGET_GROUP="${TARGET_USER}"
 
 DEPENDENCIES_SCRIPT="${INSTALL_DIR}/install_dependencies.sh"
+GIT_CONFIG_SCRIPT="${INSTALL_DIR}/configure_git.sh"
 CONFIGURE_SCRIPT="${INSTALL_DIR}/configure_pi.sh"
 PYTHON_SCRIPT="${INSTALL_DIR}/install_python.sh"
 SERVICE_SCRIPT="${INSTALL_DIR}/install_service.sh"
@@ -155,6 +156,7 @@ check_project_location() {
 check_installation_scripts() {
     local required_scripts=(
         "$DEPENDENCIES_SCRIPT"
+        "$GIT_CONFIG_SCRIPT"
         "$CONFIGURE_SCRIPT"
         "$PYTHON_SCRIPT"
         "$SERVICE_SCRIPT"
@@ -271,6 +273,17 @@ install_system_dependencies() {
     step "1/6 - DEPENDENCIAS DEL SISTEMA"
 
     "$DEPENDENCIES_SCRIPT"
+}
+
+
+configure_git_identity() {
+    step "CONFIGURACIÓN DE GIT"
+
+    SUDO_USER="$TARGET_USER" \
+        "$GIT_CONFIG_SCRIPT"
+
+    success \
+        "Identidad Git configurada."
 }
 
 
@@ -487,6 +500,7 @@ main() {
     show_version
     prepare_project_permissions
     install_system_dependencies
+    configure_git_identity
     configure_raspberry_pi
     install_python_environment
     install_global_command
