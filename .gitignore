@@ -21,3 +21,4 @@ config/*.backup
 
 # Estado local del instalador
 .roadeye-reboot-required
+startup/boot_preview.png
