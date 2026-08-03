@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import shutil
+
+import cv2
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -10,8 +12,10 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from core.config_manager import PROJECT_DIR, config
+from core.frame_buffer import frame_buffer
 from core.system_state import system_state
 from recorder.recorder_service import RecorderService
+from trip.trip_manager import trip_manager
 
 
 router = APIRouter()
@@ -1414,6 +1418,40 @@ def _trip_item(
             )
             or len(route)
         ),
+        "event_count": int(
+            data.get(
+                "event_count",
+                len(
+                    data.get(
+                        "events",
+                        [],
+                    )
+                    if isinstance(
+                        data.get(
+                            "events",
+                            [],
+                        ),
+                        list,
+                    )
+                    else []
+                ),
+            )
+            or 0
+        ),
+        "events": (
+            data.get(
+                "events",
+                [],
+            )
+            if isinstance(
+                data.get(
+                    "events",
+                    [],
+                ),
+                list,
+            )
+            else []
+        ),
     }
 
     if include_route:
@@ -1474,3 +1512,510 @@ async def trip_details(
             include_route=True,
         ),
     }
+
+
+# ============================================================
+# Eventos del viaje
+# ============================================================
+
+EVENT_TYPES = {
+    "manual": {
+        "label": "Evento manual",
+        "severity": "info",
+    },
+    "photo": {
+        "label": "Fotografía",
+        "severity": "info",
+    },
+    "braking": {
+        "label": "Frenazo fuerte",
+        "severity": "warning",
+    },
+    "impact": {
+        "label": "Posible impacto",
+        "severity": "critical",
+    },
+    "overspeed": {
+        "label": "Exceso de velocidad",
+        "severity": "warning",
+    },
+    "parking": {
+        "label": "Movimiento en aparcamiento",
+        "severity": "warning",
+    },
+    "adas": {
+        "label": "Aviso ADAS",
+        "severity": "warning",
+    },
+}
+
+
+@router.post("/api/events")
+async def create_trip_event(
+    payload: dict,
+):
+    if not isinstance(
+        payload,
+        dict,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="El evento debe ser un objeto JSON.",
+        )
+
+    event_type = str(
+        payload.get(
+            "type",
+            "manual",
+        )
+    ).strip().lower()
+
+    if event_type not in EVENT_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Tipo de evento no válido: {event_type}"
+            ),
+        )
+
+    defaults = EVENT_TYPES[
+        event_type
+    ]
+
+    current_file = None
+    segment_time = 0.0
+
+    if recorder is not None:
+        recorder_status = recorder.status()
+
+        current_file = recorder_status.get(
+            "current_file"
+        )
+
+        segment_time = max(
+            0.0,
+            _safe_number(
+                recorder_status.get(
+                    "segment_elapsed",
+                    0,
+                ),
+                0,
+            ),
+        )
+
+        if current_file:
+            current_file = Path(
+                str(current_file)
+            ).name
+
+    result = trip_manager.add_event(
+        event_type=event_type,
+        label=str(
+            payload.get(
+                "label",
+                defaults["label"],
+            )
+        ),
+        source=str(
+            payload.get(
+                "source",
+                "web",
+            )
+        ),
+        severity=str(
+            payload.get(
+                "severity",
+                defaults["severity"],
+            )
+        ),
+        protected=bool(
+            payload.get(
+                "protected",
+                event_type in {
+                    "impact",
+                    "parking",
+                },
+            )
+        ),
+        segment=current_file,
+        segment_time=segment_time,
+        latitude=system_state.get(
+            "latitude"
+        ),
+        longitude=system_state.get(
+            "longitude"
+        ),
+        speed=system_state.get(
+            "speed"
+        ),
+        data=payload.get(
+            "data",
+            {},
+        ),
+    )
+
+    return {
+        "ok": True,
+        "message": "Evento registrado.",
+        **result,
+    }
+
+
+# ============================================================
+# Fotografías inteligentes RoadEye
+# ============================================================
+
+def _photos_directory() -> Path:
+    configured_folder = Path(
+        str(
+            config.get(
+                "photos.folder",
+                "photos",
+            )
+        )
+    )
+
+    if not configured_folder.is_absolute():
+        configured_folder = (
+            PROJECT_DIR
+            / configured_folder
+        )
+
+    directory = configured_folder.resolve()
+
+    directory.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    return directory
+
+
+def _safe_photo_path(
+    filename: str,
+) -> Path:
+    clean_name = Path(
+        str(filename)
+    ).name
+
+    if not clean_name.lower().endswith(
+        (
+            ".jpg",
+            ".jpeg",
+            ".png",
+        )
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Nombre de fotografía no válido.",
+        )
+
+    directory = _photos_directory()
+
+    candidate = (
+        directory
+        / clean_name
+    ).resolve()
+
+    try:
+        candidate.relative_to(
+            directory
+        )
+
+    except ValueError:
+        raise HTTPException(
+            status_code=403,
+            detail="Ruta de fotografía no permitida.",
+        )
+
+    if (
+        not candidate.exists()
+        or not candidate.is_file()
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="La fotografía no existe.",
+        )
+
+    return candidate
+
+
+def _create_photo_thumbnail(
+    frame,
+    output_path: Path,
+) -> bool:
+    height, width = frame.shape[:2]
+
+    if width <= 0 or height <= 0:
+        return False
+
+    configured_width = int(
+        config.get(
+            "photos.thumbnail_width",
+            480,
+        )
+    )
+
+    target_width = max(
+        120,
+        min(
+            configured_width,
+            width,
+        ),
+    )
+
+    target_height = max(
+        1,
+        int(
+            height
+            * target_width
+            / width
+        ),
+    )
+
+    thumbnail = cv2.resize(
+        frame,
+        (
+            target_width,
+            target_height,
+        ),
+        interpolation=cv2.INTER_AREA,
+    )
+
+    quality = int(
+        config.get(
+            "photos.thumbnail_quality",
+            82,
+        )
+    )
+
+    quality = max(
+        1,
+        min(
+            100,
+            quality,
+        ),
+    )
+
+    return bool(
+        cv2.imwrite(
+            str(output_path),
+            thumbnail,
+            [
+                int(
+                    cv2.IMWRITE_JPEG_QUALITY
+                ),
+                quality,
+            ],
+        )
+    )
+
+
+@router.post("/api/photos/capture")
+async def capture_photo():
+    frame = frame_buffer.get_frame()
+
+    if frame is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "La cámara todavía no dispone "
+                "de un fotograma."
+            ),
+        )
+
+    photos_directory = (
+        _photos_directory()
+    )
+
+    timestamp = datetime.now()
+
+    unique_name = timestamp.strftime(
+        "photo_%Y%m%d_%H%M%S_%f"
+    )
+
+    photo_path = (
+        photos_directory
+        / f"{unique_name}.jpg"
+    )
+
+    thumbnail_path = (
+        photos_directory
+        / f"{unique_name}_thumb.jpg"
+    )
+
+    jpeg_quality = int(
+        config.get(
+            "photos.jpeg_quality",
+            95,
+        )
+    )
+
+    jpeg_quality = max(
+        1,
+        min(
+            100,
+            jpeg_quality,
+        ),
+    )
+
+    photo_saved = cv2.imwrite(
+        str(photo_path),
+        frame,
+        [
+            int(
+                cv2.IMWRITE_JPEG_QUALITY
+            ),
+            jpeg_quality,
+        ],
+    )
+
+    if not photo_saved:
+        raise HTTPException(
+            status_code=500,
+            detail="No se pudo guardar la fotografía.",
+        )
+
+    thumbnail_saved = (
+        _create_photo_thumbnail(
+            frame,
+            thumbnail_path,
+        )
+    )
+
+    recorder_status = (
+        recorder.status()
+        if recorder is not None
+        else {}
+    )
+
+    current_file = recorder_status.get(
+        "current_file"
+    )
+
+    if current_file:
+        current_file = Path(
+            str(current_file)
+        ).name
+
+    segment_time = max(
+        0.0,
+        _safe_number(
+            recorder_status.get(
+                "segment_elapsed",
+                0,
+            ),
+            0,
+        ),
+    )
+
+    latitude = system_state.get(
+        "latitude"
+    )
+
+    longitude = system_state.get(
+        "longitude"
+    )
+
+    speed = system_state.get(
+        "speed"
+    )
+
+    event_result = trip_manager.add_event(
+        event_type="photo",
+        label="Fotografía",
+        source="web",
+        severity="info",
+        protected=False,
+        created=timestamp,
+        segment=current_file,
+        segment_time=segment_time,
+        latitude=latitude,
+        longitude=longitude,
+        speed=speed,
+        data={
+            "photo": {
+                "filename": photo_path.name,
+                "thumbnail": (
+                    thumbnail_path.name
+                    if thumbnail_saved
+                    else None
+                ),
+                "url": (
+                    f"/api/photos/file/"
+                    f"{photo_path.name}"
+                ),
+                "thumbnail_url": (
+                    f"/api/photos/file/"
+                    f"{thumbnail_path.name}"
+                    if thumbnail_saved
+                    else None
+                ),
+                "width": int(
+                    frame.shape[1]
+                ),
+                "height": int(
+                    frame.shape[0]
+                ),
+                "size_bytes": int(
+                    photo_path.stat().st_size
+                ),
+            }
+        },
+    )
+
+    return {
+        "ok": True,
+        "message": "Fotografía guardada.",
+        "photo": {
+            "filename": photo_path.name,
+            "thumbnail": (
+                thumbnail_path.name
+                if thumbnail_saved
+                else None
+            ),
+            "url": (
+                f"/api/photos/file/"
+                f"{photo_path.name}"
+            ),
+            "thumbnail_url": (
+                f"/api/photos/file/"
+                f"{thumbnail_path.name}"
+                if thumbnail_saved
+                else None
+            ),
+        },
+        **event_result,
+    }
+
+
+@router.get(
+    "/api/photos/file/{filename}"
+)
+async def photo_file(
+    filename: str,
+    download: bool = False,
+):
+    path = _safe_photo_path(
+        filename
+    )
+
+    return FileResponse(
+        path=path,
+        media_type="image/jpeg",
+        filename=(
+            path.name
+            if download
+            else None
+        ),
+        content_disposition_type=(
+            "attachment"
+            if download
+            else "inline"
+        ),
+        headers={
+            "Cache-Control": (
+                "public, max-age=3600"
+            )
+        },
+    )

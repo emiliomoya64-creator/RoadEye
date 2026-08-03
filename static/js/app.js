@@ -147,6 +147,118 @@ class PopupManager {
             };
         }
 
+        if (name === "photo") {
+            const event = pendingPhotoEvent;
+
+            if (!event) {
+                return null;
+            }
+
+            const photo = (
+                event.data
+                && event.data.photo
+                ? event.data.photo
+                : {}
+            );
+
+            return {
+                eyebrow: "Fotografía del viaje",
+                title: event.label || "Fotografía",
+                content: `
+                    <div class="photo-viewer">
+                        <div class="photo-viewer-image">
+                            <img
+                                src="${escapeHtml(
+                                    photo.url || ""
+                                )}"
+                                alt="Fotografía de RoadEye"
+                            >
+                        </div>
+
+                        <div class="photo-viewer-info">
+                            <div class="photo-metadata-grid">
+                                <div>
+                                    <span>Momento del viaje</span>
+                                    <strong>
+                                        ${formatTrackTime(
+                                            event.trip_time
+                                        )}
+                                    </strong>
+                                </div>
+
+                                <div>
+                                    <span>Velocidad</span>
+                                    <strong>
+                                        ${Number(
+                                            event.speed || 0
+                                        ).toFixed(1)} km/h
+                                    </strong>
+                                </div>
+
+                                <div>
+                                    <span>GPS</span>
+                                    <strong>
+                                        ${
+                                            Array.isArray(event.gps)
+                                            ? escapeHtml(
+                                                `${event.gps[0]}, ${event.gps[1]}`
+                                            )
+                                            : "Sin posición GPS"
+                                        }
+                                    </strong>
+                                </div>
+
+                                <div>
+                                    <span>Resolución</span>
+                                    <strong>
+                                        ${photo.width || "--"}
+                                        ×
+                                        ${photo.height || "--"}
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div class="photo-viewer-actions">
+                                <a
+                                    class="browser-button"
+                                    href="${escapeHtml(
+                                        photo.url || "#"
+                                    )}?download=1"
+                                    download
+                                >
+                                    Descargar foto
+                                </a>
+
+                                <button
+                                    id="photoOpenVideo"
+                                    class="browser-button"
+                                    type="button"
+                                >
+                                    Ver vídeo en este instante
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                onOpen: () => {
+                    const openVideoButton = (
+                        document.getElementById(
+                            "photoOpenVideo"
+                        )
+                    );
+
+                    if (openVideoButton) {
+                        openVideoButton.onclick = () => {
+                            openTripEvent(
+                                event.segment,
+                                event.segment_time
+                            );
+                        };
+                    }
+                }
+            };
+        }
+
         if (name === "trips") {
             return {
                 eyebrow: "Trayectos",
@@ -1594,6 +1706,94 @@ function renderTripDetails(trip) {
         })
         .join("");
 
+    const events = (
+        Array.isArray(trip.events)
+        ? trip.events
+        : []
+    );
+
+    const eventsHtml = (
+        events.length
+        ? events.map((event) => `
+            <button
+                class="trip-event ${escapeHtml(event.severity)}"
+                type="button"
+                data-event-type="${escapeHtml(
+                    event.type || "manual"
+                )}"
+                data-event-id="${escapeHtml(
+                    event.event_id || ""
+                )}"
+                data-event-segment="${escapeHtml(
+                    event.segment || ""
+                )}"
+                data-event-time="${Number(
+                    event.segment_time || 0
+                )}"
+                data-event-latitude="${
+                    Array.isArray(event.gps)
+                    ? Number(event.gps[0])
+                    : ""
+                }"
+                data-event-longitude="${
+                    Array.isArray(event.gps)
+                    ? Number(event.gps[1])
+                    : ""
+                }"
+                title="Abrir el vídeo en este momento"
+            >
+                <span class="trip-event-icon">
+                    ${eventIcon(event.type)}
+                </span>
+
+                <span class="trip-event-main">
+                    <strong>
+                        ${escapeHtml(event.label)}
+                    </strong>
+
+                    <small>
+                        ${formatTrackTime(event.trip_time)}
+                        ·
+                        ${escapeHtml(event.type)}
+                        ·
+                        ${Number(event.speed || 0).toFixed(1)} km/h
+                    </small>
+
+                    ${
+                        event.type === "photo"
+                        && event.data
+                        && event.data.photo
+                        && event.data.photo.thumbnail_url
+                        ? `
+                            <img
+                                class="trip-event-photo"
+                                src="${escapeHtml(
+                                    event.data.photo.thumbnail_url
+                                )}"
+                                alt=""
+                                loading="lazy"
+                            >
+                        `
+                        : ""
+                    }
+                </span>
+
+                <span class="trip-event-status">
+                    ${
+                        event.protected
+                        ? "Protegido"
+                        : "Abrir ▶"
+                    }
+                </span>
+            </button>
+        `).join("")
+        : `
+            <div class="trip-events-empty">
+                Este viaje no contiene eventos.
+            </div>
+        `
+    );
+
     details.innerHTML = `
         <div class="trip-details-content">
             <div class="trip-summary-grid">
@@ -1684,6 +1884,17 @@ function renderTripDetails(trip) {
                 Este viaje no contiene una ruta GPS.
             </div>
 
+            <h3>
+                Eventos del viaje
+                <span class="section-count">
+                    ${trip.event_count || events.length}
+                </span>
+            </h3>
+
+            <div class="trip-events">
+                ${eventsHtml}
+            </div>
+
             <h3>Vídeos del viaje</h3>
 
             <div class="trip-segments">
@@ -1691,6 +1902,42 @@ function renderTripDetails(trip) {
             </div>
         </div>
     `;
+
+    document.querySelectorAll(
+        ".trip-event"
+    ).forEach((button) => {
+        button.onclick = () => {
+            const event = (
+                Array.isArray(selectedTrip.events)
+                ? selectedTrip.events.find(
+                    item => (
+                        item.event_id
+                        === button.dataset.eventId
+                    )
+                )
+                : null
+            );
+
+            if (
+                button.dataset.eventType === "photo"
+                && event
+                && event.data
+                && event.data.photo
+            ) {
+                pendingPhotoEvent = event;
+                popupManager.open("photo");
+                return;
+            }
+
+            openTripEvent(
+                button.dataset.eventSegment,
+                Number(
+                    button.dataset.eventTime
+                    || 0
+                )
+            );
+        };
+    });
 
     document.querySelectorAll(
         ".trip-segment"
@@ -1930,4 +2177,355 @@ function formatLongDuration(value) {
     }
 
     return `${seconds} s`;
+}
+
+
+// ============================================================
+// Marcador manual de eventos
+// ============================================================
+
+const markEventButton = document.getElementById(
+    "markEvent"
+);
+
+
+async function markManualEvent() {
+    if (!markEventButton) {
+        return;
+    }
+
+    markEventButton.disabled = true;
+
+    try {
+        const response = await fetch(
+            "/api/events",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(
+                    {
+                        type: "manual",
+                        source: "web",
+                        label: "Evento marcado manualmente"
+                    }
+                )
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail
+                || "No se pudo guardar el evento."
+            );
+        }
+
+        const originalText = (
+            markEventButton.textContent
+        );
+
+        markEventButton.textContent = (
+            "Evento guardado"
+        );
+
+        markEventButton.classList.add(
+            "event-saved"
+        );
+
+        window.setTimeout(
+            () => {
+                markEventButton.textContent = (
+                    originalText
+                );
+
+                markEventButton.classList.remove(
+                    "event-saved"
+                );
+            },
+            1600
+        );
+
+    } catch (error) {
+        window.alert(
+            error.message
+        );
+
+    } finally {
+        markEventButton.disabled = false;
+    }
+}
+
+
+if (markEventButton) {
+    markEventButton.addEventListener(
+        "click",
+        markManualEvent
+    );
+}
+
+
+function eventIcon(type) {
+    const icons = {
+        manual: "●",
+        photo: "📷",
+        braking: "!",
+        impact: "⚠",
+        overspeed: "↑",
+        parking: "P",
+        adas: "A"
+    };
+
+    return icons[type] || "●";
+}
+
+
+// ============================================================
+// Navegación desde evento hasta vídeo
+// ============================================================
+
+async function openTripEvent(
+    segmentName,
+    segmentTime
+) {
+    if (!segmentName) {
+        window.alert(
+            "Este evento no tiene un segmento de vídeo asociado."
+        );
+
+        return;
+    }
+
+    const safeTime = Math.max(
+        0,
+        Number(segmentTime) || 0
+    );
+
+    popupManager.close();
+
+    window.setTimeout(
+        () => {
+            popupManager.open(
+                "videos"
+            );
+
+            waitForVideoListAndOpenEvent(
+                segmentName,
+                safeTime,
+                0
+            );
+        },
+        120
+    );
+}
+
+
+function waitForVideoListAndOpenEvent(
+    segmentName,
+    segmentTime,
+    attempt
+) {
+    const maximumAttempts = 30;
+
+    const target = Array.from(
+        document.querySelectorAll(
+            ".video-list-item"
+        )
+    ).find((item) => {
+        return (
+            item.dataset.videoName
+            === segmentName
+        );
+    });
+
+    if (target) {
+        target.click();
+
+        window.setTimeout(
+            () => {
+                seekVideoToEvent(
+                    segmentTime
+                );
+            },
+            120
+        );
+
+        return;
+    }
+
+    if (attempt >= maximumAttempts) {
+        window.alert(
+            "No se encontró el vídeo asociado al evento."
+        );
+
+        return;
+    }
+
+    window.setTimeout(
+        () => {
+            waitForVideoListAndOpenEvent(
+                segmentName,
+                segmentTime,
+                attempt + 1
+            );
+        },
+        120
+    );
+}
+
+
+function seekVideoToEvent(
+    segmentTime
+) {
+    const player = document.getElementById(
+        "videoPlayer"
+    );
+
+    if (!player) {
+        return;
+    }
+
+    const seek = () => {
+        const duration = Number(
+            player.duration
+        );
+
+        let targetTime = Math.max(
+            0,
+            Number(segmentTime) || 0
+        );
+
+        if (
+            Number.isFinite(duration)
+            && duration > 0
+        ) {
+            targetTime = Math.min(
+                targetTime,
+                Math.max(
+                    0,
+                    duration - 0.05
+                )
+            );
+        }
+
+        try {
+            player.currentTime = targetTime;
+
+            const playPromise = player.play();
+
+            if (
+                playPromise
+                && typeof playPromise.catch
+                === "function"
+            ) {
+                playPromise.catch(
+                    () => {
+                        // Algunos navegadores bloquean
+                        // la reproducción automática.
+                    }
+                );
+            }
+
+        } catch (error) {
+            console.error(
+                "No se pudo abrir el evento:",
+                error
+            );
+        }
+    };
+
+    if (player.readyState >= 1) {
+        seek();
+    } else {
+        player.addEventListener(
+            "loadedmetadata",
+            seek,
+            {
+                once: true
+            }
+        );
+    }
+}
+
+
+// ============================================================
+// Fotografía inteligente
+// ============================================================
+
+let pendingPhotoEvent = null;
+
+const capturePhotoButton = document.getElementById(
+    "capturePhoto"
+);
+
+
+async function captureRoadEyePhoto() {
+    if (!capturePhotoButton) {
+        return;
+    }
+
+    capturePhotoButton.disabled = true;
+
+    const originalHtml = (
+        capturePhotoButton.innerHTML
+    );
+
+    capturePhotoButton.innerHTML = `
+        <span class="button-icon">◌</span>
+        <span>Guardando…</span>
+    `;
+
+    try {
+        const response = await fetch(
+            "/api/photos/capture",
+            {
+                method: "POST"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail
+                || "No se pudo guardar la fotografía."
+            );
+        }
+
+        capturePhotoButton.innerHTML = `
+            <span class="button-icon">✓</span>
+            <span>Guardada</span>
+        `;
+
+        window.setTimeout(
+            () => {
+                capturePhotoButton.innerHTML = (
+                    originalHtml
+                );
+            },
+            1500
+        );
+
+    } catch (error) {
+        window.alert(
+            error.message
+        );
+
+        capturePhotoButton.innerHTML = (
+            originalHtml
+        );
+
+    } finally {
+        capturePhotoButton.disabled = false;
+    }
+}
+
+
+if (capturePhotoButton) {
+    capturePhotoButton.addEventListener(
+        "click",
+        captureRoadEyePhoto
+    );
 }

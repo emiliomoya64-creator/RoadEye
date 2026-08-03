@@ -1236,3 +1236,269 @@ button {
         min-height: 300px;
     }
 }
+
+
+/* ==========================================================
+   EVENTOS DE VIAJE
+   ========================================================== */
+
+.record-actions {
+    flex-wrap: wrap;
+}
+
+.event-button {
+    flex-basis: 100%;
+    background: #29415b;
+}
+
+.event-button.event-saved {
+    background: #17673c;
+}
+
+.section-count {
+    display: inline-grid;
+    place-items: center;
+
+    min-width: 24px;
+    height: 24px;
+    margin-left: 7px;
+    padding: 0 7px;
+
+    color: var(--accent);
+    font-size: 0.7rem;
+
+    border-radius: 12px;
+    background: var(--accent-dark);
+}
+
+.trip-events {
+    display: grid;
+    gap: 8px;
+}
+
+.trip-event {
+    display: grid;
+    grid-template-columns:
+        40px
+        minmax(0, 1fr)
+        auto;
+
+    align-items: center;
+    gap: 11px;
+
+    min-height: 58px;
+    padding: 9px 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: #151d21;
+}
+
+.trip-event.warning {
+    border-color: #665022;
+    background: #282113;
+}
+
+.trip-event.critical {
+    border-color: #743535;
+    background: #2c1717;
+}
+
+.trip-event-icon {
+    display: grid;
+    place-items: center;
+
+    width: 36px;
+    height: 36px;
+
+    color: var(--accent);
+    font-weight: 900;
+
+    border-radius: 10px;
+    background: var(--accent-dark);
+}
+
+.trip-event.warning .trip-event-icon {
+    color: #ffd071;
+    background: #493817;
+}
+
+.trip-event.critical .trip-event-icon {
+    color: #ff8b8b;
+    background: #542222;
+}
+
+.trip-event-main {
+    min-width: 0;
+}
+
+.trip-event-main strong,
+.trip-event-main small {
+    display: block;
+}
+
+.trip-event-main small {
+    margin-top: 5px;
+    color: var(--muted);
+}
+
+.trip-event-status {
+    color: #ffc85c;
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.trip-events-empty {
+    padding: 18px;
+
+    color: var(--muted);
+    text-align: center;
+
+    border: 1px dashed var(--border);
+    border-radius: 11px;
+}
+
+
+.trip-event {
+    width: 100%;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    transition:
+        border-color 140ms ease,
+        background 140ms ease,
+        transform 140ms ease;
+}
+
+.trip-event:hover {
+    border-color: #347a53;
+    background: #192720;
+    transform: translateY(-1px);
+}
+
+.trip-event.warning:hover {
+    border-color: #94702b;
+    background: #342a16;
+}
+
+.trip-event.critical:hover {
+    border-color: #a44444;
+    background: #381b1b;
+}
+
+.trip-event:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+
+/* ==========================================================
+   FOTOGRAFÍA INTELIGENTE
+   ========================================================== */
+
+.photo-viewer {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1.55fr)
+        minmax(280px, 0.65fr);
+
+    min-height: 100%;
+}
+
+.photo-viewer-image {
+    display: grid;
+    place-items: center;
+
+    min-height: 0;
+    padding: 18px;
+
+    background: #030405;
+}
+
+.photo-viewer-image img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+    max-height: 72vh;
+
+    object-fit: contain;
+
+    border-radius: 12px;
+}
+
+.photo-viewer-info {
+    padding: 20px;
+
+    border-left: 1px solid var(--border);
+    background: #0e1417;
+}
+
+.photo-metadata-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.photo-metadata-grid > div {
+    padding: 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 11px;
+
+    background: #151d21;
+}
+
+.photo-metadata-grid span {
+    display: block;
+
+    margin-bottom: 5px;
+
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+.photo-metadata-grid strong {
+    display: block;
+
+    overflow-wrap: anywhere;
+    font-size: 0.86rem;
+}
+
+.photo-viewer-actions {
+    display: grid;
+    gap: 9px;
+    margin-top: 18px;
+}
+
+.trip-event-photo {
+    display: block;
+
+    width: min(220px, 100%);
+    margin-top: 10px;
+
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+
+@media (max-width: 780px) {
+    .photo-viewer {
+        grid-template-columns: 1fr;
+    }
+
+    .photo-viewer-image {
+        min-height: 360px;
+    }
+
+    .photo-viewer-info {
+        border-top: 1px solid var(--border);
+        border-left: 0;
+    }
+}
