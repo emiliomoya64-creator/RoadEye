@@ -104,5 +104,9 @@
         "log_level": "INFO",
         "service_name": "roadeye.service"
     },
-    "test": {}
+    "test": {},
+    "trips": {
+        "enabled": true,
+        "folder": "trips"
+    }
 }

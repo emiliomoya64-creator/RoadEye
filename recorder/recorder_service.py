@@ -15,6 +15,7 @@ from core.config_manager import PROJECT_DIR, config
 from core.frame_buffer import frame_buffer
 from core.system_state import system_state
 from recorder.recording_session import RecordingSession
+from trip.trip_manager import trip_manager
 
 
 logger = logging.getLogger(__name__)
@@ -255,6 +256,16 @@ class RecorderService:
 
         # Después se cierra el escritor bajo el mismo bloqueo.
         self._close_writer()
+
+        # Detener manualmente la grabación finaliza el viaje.
+        if was_recording:
+            try:
+                trip_manager.close_trip()
+
+            except Exception:
+                logger.exception(
+                    "No se pudo cerrar el viaje activo"
+                )
 
         if was_recording:
             logger.info(
@@ -772,6 +783,11 @@ class RecorderService:
             try:
                 metadata = (
                     current_session.finalize()
+                )
+
+                trip_manager.add_segment(
+                    metadata,
+                    current_session.metadata_path,
                 )
 
                 logger.info(
