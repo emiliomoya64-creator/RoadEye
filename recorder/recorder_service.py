@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import shutil
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +14,7 @@ import cv2
 from core.config_manager import PROJECT_DIR, config
 from core.frame_buffer import frame_buffer
 from core.system_state import system_state
+from recorder.recording_session import RecordingSession
 
 
 logger = logging.getLogger(__name__)
@@ -82,8 +85,12 @@ class RecorderService:
         self._lock = RLock()
 
         self._writer: Optional[
-            cv2.VideoWriter
+            subprocess.Popen
         ] = None
+
+        self._video_encoder = (
+            self._detect_h264_encoder()
+        )
 
         self._segment_start: Optional[
             float
@@ -91,6 +98,10 @@ class RecorderService:
 
         self._current_file: Optional[
             Path
+        ] = None
+
+        self._current_session: Optional[
+            RecordingSession
         ] = None
 
     # ---------------------------------------------------------
@@ -368,20 +379,201 @@ class RecorderService:
             ):
                 return
 
-            if self._writer is not None:
-                self._writer.write(
-                    frame
+            if (
+                self._current_session
+                is not None
+            ):
+                self._current_session.update(
+                    frame,
+                    latitude=system_state.get(
+                        "latitude"
+                    ),
+                    longitude=system_state.get(
+                        "longitude"
+                    ),
+                    gps_fix=system_state.get(
+                        "gps_fix"
+                    ),
+                    speed=system_state.get(
+                        "speed"
+                    ),
                 )
+
+            if self._writer is not None:
+                if self._writer.poll() is not None:
+                    raise RuntimeError(
+                        "FFmpeg terminó inesperadamente "
+                        f"con código {self._writer.returncode}"
+                    )
+
+                if self._writer.stdin is None:
+                    raise RuntimeError(
+                        "FFmpeg no tiene entrada de vídeo."
+                    )
+
+                try:
+                    self._writer.stdin.write(
+                        frame.tobytes()
+                    )
+
+                except BrokenPipeError as exc:
+                    raise RuntimeError(
+                        "FFmpeg cerró la entrada de vídeo."
+                    ) from exc
 
     # ---------------------------------------------------------
     # Segmentos
     # ---------------------------------------------------------
+
+    def _detect_h264_encoder(
+        self,
+    ) -> str:
+        """
+        Selecciona el mejor codificador H.264 disponible.
+
+        Prioridad:
+        1. h264_v4l2m2m: hardware Raspberry Pi.
+        2. libx264: software, como respaldo.
+        """
+
+        if shutil.which(
+            "ffmpeg"
+        ) is None:
+            raise RuntimeError(
+                "FFmpeg no está instalado."
+            )
+
+        try:
+            result = subprocess.run(
+                [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-encoders",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+        except (
+            subprocess.SubprocessError,
+            OSError,
+        ) as exc:
+            raise RuntimeError(
+                "No se pudieron consultar "
+                "los codificadores de FFmpeg."
+            ) from exc
+
+        encoders = (
+            result.stdout
+            + result.stderr
+        )
+
+        if "h264_v4l2m2m" in encoders:
+            return "h264_v4l2m2m"
+
+        if "libx264" in encoders:
+            return "libx264"
+
+        raise RuntimeError(
+            "FFmpeg no dispone de un codificador H.264."
+        )
+
+    def _build_ffmpeg_command(
+        self,
+        *,
+        output_path: Path,
+        width: int,
+        height: int,
+    ) -> list[str]:
+        """
+        Construye el comando que recibe frames BGR por stdin
+        y produce un MP4 H.264 compatible con navegador.
+        """
+
+        fps_text = (
+            f"{self.fps:.3f}"
+        )
+
+        command = [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "warning",
+            "-y",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "bgr24",
+            "-video_size",
+            f"{width}x{height}",
+            "-framerate",
+            fps_text,
+            "-i",
+            "pipe:0",
+            "-an",
+            "-c:v",
+            self._video_encoder,
+        ]
+
+        if (
+            self._video_encoder
+            == "h264_v4l2m2m"
+        ):
+            command.extend(
+                [
+                    "-b:v",
+                    "6000k",
+                    "-g",
+                    str(
+                        max(
+                            1,
+                            int(
+                                round(
+                                    self.fps * 2
+                                )
+                            ),
+                        )
+                    ),
+                ]
+            )
+
+        else:
+            command.extend(
+                [
+                    "-preset",
+                    "ultrafast",
+                    "-crf",
+                    "24",
+                    "-tune",
+                    "zerolatency",
+                ]
+            )
+
+        command.extend(
+            [
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+                "-f",
+                "mp4",
+                str(
+                    output_path
+                ),
+            ]
+        )
+
+        return command
 
     def _open_writer_locked(
         self,
         frame,
     ) -> None:
         """
+        Abre FFmpeg para crear directamente un MP4 H.264.
+
         Debe ejecutarse con self._lock adquirido.
         """
 
@@ -402,24 +594,42 @@ class RecorderService:
 
         height, width = frame.shape[:2]
 
-        writer = cv2.VideoWriter(
-            str(output_path),
-            cv2.VideoWriter_fourcc(
-                *"mp4v"
-            ),
-            self.fps,
-            (
-                width,
-                height,
-            ),
+        command = self._build_ffmpeg_command(
+            output_path=output_path,
+            width=width,
+            height=height,
         )
 
-        if not writer.isOpened():
-            writer.release()
+        logger.info(
+            "Abriendo FFmpeg con codificador %s",
+            self._video_encoder,
+        )
+
+        writer = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            bufsize=0,
+        )
+
+        # Detectar fallos inmediatos de FFmpeg.
+        time.sleep(
+            0.15
+        )
+
+        if writer.poll() is not None:
+            error_text = ""
+
+            if writer.stderr is not None:
+                error_text = writer.stderr.read().decode(
+                    "utf-8",
+                    errors="replace",
+                )
 
             raise RuntimeError(
-                "No se pudo crear el vídeo: "
-                f"{output_path}"
+                "No se pudo iniciar FFmpeg: "
+                f"{error_text.strip()}"
             )
 
         self._writer = writer
@@ -428,14 +638,33 @@ class RecorderService:
         )
         self._current_file = output_path
 
+        self._current_session = (
+            RecordingSession(
+                output_path,
+                recording_type=(
+                    "parking"
+                    if bool(
+                        getattr(
+                            system_state,
+                            "parking_motion",
+                            False,
+                        )
+                    )
+                    else "normal"
+                ),
+                protected=False,
+            )
+        )
+
         logger.info(
-            "Grabando segmento: %s",
+            "Grabando segmento H.264: %s",
             output_path,
         )
 
         print(
-            f"● Grabando {output_path}"
+            f"● Grabando H.264 {output_path}"
         )
+
 
     def _close_writer(self) -> None:
         with self._lock:
@@ -448,16 +677,77 @@ class RecorderService:
 
         writer = self._writer
         current_file = self._current_file
+        current_session = (
+            self._current_session
+        )
 
         self._writer = None
         self._segment_start = None
         self._current_file = None
+        self._current_session = None
 
         if writer is None:
             return
 
         try:
-            writer.release()
+            if writer.stdin is not None:
+                try:
+                    writer.stdin.flush()
+                except (
+                    BrokenPipeError,
+                    OSError,
+                ):
+                    pass
+
+                try:
+                    writer.stdin.close()
+                except OSError:
+                    pass
+
+            try:
+                writer.wait(
+                    timeout=12.0
+                )
+
+            except subprocess.TimeoutExpired:
+                logger.warning(
+                    "FFmpeg no terminó a tiempo; "
+                    "se enviará terminate()."
+                )
+
+                writer.terminate()
+
+                try:
+                    writer.wait(
+                        timeout=3.0
+                    )
+
+                except subprocess.TimeoutExpired:
+                    writer.kill()
+                    writer.wait(
+                        timeout=2.0
+                    )
+
+            if writer.returncode not in (
+                0,
+                None,
+            ):
+                error_text = ""
+
+                if writer.stderr is not None:
+                    try:
+                        error_text = writer.stderr.read().decode(
+                            "utf-8",
+                            errors="replace",
+                        )
+                    except OSError:
+                        pass
+
+                logger.error(
+                    "FFmpeg terminó con código %s: %s",
+                    writer.returncode,
+                    error_text.strip(),
+                )
 
             logger.info(
                 "Vídeo guardado: %s",
@@ -473,6 +763,32 @@ class RecorderService:
                 "No se pudo cerrar el vídeo: %s",
                 current_file,
             )
+
+        if (
+            current_session is not None
+            and current_file is not None
+            and current_file.exists()
+        ):
+            try:
+                metadata = (
+                    current_session.finalize()
+                )
+
+                logger.info(
+                    "Metadatos guardados: "
+                    "duración=%.2fs, "
+                    "velocidad máxima=%.1f km/h",
+                    metadata["duration"],
+                    metadata["speed"]["max"],
+                )
+
+            except Exception:
+                logger.exception(
+                    "No se pudieron generar "
+                    "los metadatos multimedia de %s",
+                    current_file,
+                )
+
 
     def _segment_expired_locked(
         self,
