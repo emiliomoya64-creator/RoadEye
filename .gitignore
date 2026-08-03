@@ -40,3 +40,5 @@ photos/
 *.map-sync-backup
 *.trip-cards-premium-backup
 *.trip-header-premium-backup
+*.before-trip-segments-module
+*.before-continuous-trip-player

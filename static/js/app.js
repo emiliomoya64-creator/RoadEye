@@ -1696,329 +1696,39 @@ async function loadTrips() {
 }
 
 
-function renderTripsList(trips) {
-    const list = document.getElementById(
-        "tripList"
+function renderTripsList(
+    trips
+) {
+    const module = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripCards
     );
 
-    if (!list) {
-        return;
-    }
-
-    if (!trips.length) {
-        list.innerHTML = `
-            <div class="browser-empty premium-empty">
-                <div class="empty-icon">⌁</div>
-
-                <strong>
-                    No hay viajes
-                </strong>
-
-                <span>
-                    Los nuevos trayectos aparecerán aquí.
-                </span>
-            </div>
-        `;
+    if (!module) {
+        console.error(
+            "El módulo tripCards no está disponible."
+        );
 
         return;
     }
 
-    list.innerHTML = "";
-
-    for (const trip of trips) {
-        const card = document.createElement(
-            "button"
-        );
-
-        card.className = (
-            "trip-list-item trip-premium-card"
-        );
-
-        card.type = "button";
-
-        const visual = tripVisualState(
-            trip
-        );
-
-        card.classList.add(
-            `trip-state-${visual.state}`
-        );
-
-        const segments = (
-            Array.isArray(trip.segments)
-            ? trip.segments
-            : []
-        );
-
-        const events = (
-            Array.isArray(trip.events)
-            ? trip.events
-            : []
-        );
-
-        const firstSegment = (
-            segments.length
-            ? segments[0]
-            : null
-        );
-
-        const thumbnailUrl = (
-            firstSegment
-            && firstSegment.filename
-            ? (
-                "/api/videos/thumbnail/"
-                + encodeURIComponent(
-                    firstSegment.filename
-                )
-            )
-            : null
-        );
-
-        const photoCount = events.filter(
-            event => event.type === "photo"
-        ).length;
-
-        const protectedCount = segments.filter(
-            segment => Boolean(
-                segment.protected
-            )
-        ).length;
-
-        const isProtected = (
-            protectedCount > 0
-            || events.some(
-                event => Boolean(
-                    event.protected
-                )
-            )
-        );
-
-        const distance = (
-            trip.distance
-            && Number.isFinite(
-                Number(
-                    trip.distance.kilometers
-                )
-            )
-            ? formatDistance(
-                trip.distance.kilometers
-            )
-            : "Sin distancia"
-        );
-
-        const media = (
-            thumbnailUrl
-            ? `
-                <img
-                    class="trip-card-thumbnail"
-                    src="${escapeHtml(thumbnailUrl)}"
-                    alt=""
-                    loading="lazy"
-                    onerror="
-                        this.classList.add('hidden');
-                        this.nextElementSibling.classList.remove('hidden');
-                    "
-                >
-
-                <span class="trip-card-fallback hidden">
-                    ${visual.icon}
-                </span>
-            `
-            : `
-                <span class="trip-card-fallback">
-                    ${visual.icon}
-                </span>
-            `
-        );
-
-        card.innerHTML = `
-            <span class="trip-card-media">
-                ${media}
-
-                <span
-                    class="
-                        trip-card-status
-                        status-${visual.state}
-                    "
-                >
-                    <span>${visual.icon}</span>
-                    ${escapeHtml(visual.label)}
-                </span>
-
-                ${
-                    isProtected
-                    ? `
-                        <span
-                            class="trip-card-protected"
-                            title="Contiene vídeos protegidos"
-                        >
-                            🛡 Protegido
-                        </span>
-                    `
-                    : ""
-                }
-
-                <span class="trip-card-duration">
-                    ${escapeHtml(trip.duration)}
-                </span>
-            </span>
-
-            <span class="trip-card-content">
-                <span class="trip-card-heading">
-                    <span>
-                        <strong>
-                            ${escapeHtml(
-                                premiumTripDate(
-                                    trip.started,
-                                    trip.date
-                                )
-                            )}
-                        </strong>
-
-                        <small>
-                            ${escapeHtml(trip.time)}
-                        </small>
-                    </span>
-
-                    <span class="trip-card-arrow">
-                        →
-                    </span>
-                </span>
-
-                <span class="trip-card-primary-stats">
-                    <span>
-                        <small>Distancia</small>
-                        <strong>${escapeHtml(distance)}</strong>
-                    </span>
-
-                    <span>
-                        <small>Velocidad máxima</small>
-                        <strong>
-                            ${Number(
-                                trip.speed?.max || 0
-                            ).toFixed(1)}
-                            km/h
-                        </strong>
-                    </span>
-                </span>
-
-                <span class="trip-card-chips">
-                    <span>
-                        🎥
-                        ${Number(
-                            trip.segment_count || 0
-                        )}
-                        segmentos
-                    </span>
-
-                    <span>
-                        📷
-                        ${photoCount}
-                        fotos
-                    </span>
-
-                    <span>
-                        ⚠
-                        ${Number(
-                            trip.event_count
-                            || events.length
-                            || 0
-                        )}
-                        eventos
-                    </span>
-
-                    ${
-                        protectedCount > 0
-                        ? `
-                            <span class="protected-chip">
-                                🛡
-                                ${protectedCount}
-                                protegidos
-                            </span>
-                        `
-                        : ""
-                    }
-                </span>
-            </span>
-        `;
-
-        card.onclick = (
-            () => selectTrip(
-                trip,
-                card
-            )
-        );
-
-        list.appendChild(
-            card
-        );
-    }
+    module.render(
+        trips,
+        {
+            escapeHtml,
+            formatDistance,
+            selectTrip
+        }
+    );
 }
 
 
-function tripVisualState(trip) {
-    const events = (
-        Array.isArray(trip.events)
-        ? trip.events
-        : []
+function tripVisualState(
+    trip
+) {
+    return window.RoadEyeMedia.tripCards.visualState(
+        trip
     );
-
-    if (
-        trip.type === "parking"
-        || events.some(
-            event => event.type === "parking"
-        )
-    ) {
-        return {
-            state: "parking",
-            label: "Parking",
-            icon: "P"
-        };
-    }
-
-    if (
-        events.some(
-            event => event.type === "impact"
-        )
-    ) {
-        return {
-            state: "impact",
-            label: "Impacto",
-            icon: "!"
-        };
-    }
-
-    if (
-        events.some(
-            event => [
-                "braking",
-                "overspeed",
-                "adas"
-            ].includes(
-                event.type
-            )
-        )
-    ) {
-        return {
-            state: "warning",
-            label: "Advertencia",
-            icon: "⚠"
-        };
-    }
-
-    if (events.length > 0) {
-        return {
-            state: "event",
-            label: "Con eventos",
-            icon: "●"
-        };
-    }
-
-    return {
-        state: "normal",
-        label: "Viaje",
-        icon: "⌁"
-    };
 }
 
 
@@ -2026,27 +1736,9 @@ function premiumTripDate(
     started,
     fallback
 ) {
-    const date = new Date(
-        started
-    );
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-        return fallback || "Fecha desconocida";
-    }
-
-    return new Intl.DateTimeFormat(
-        "es-ES",
-        {
-            day: "2-digit",
-            month: "short",
-            year: "numeric"
-        }
-    ).format(
-        date
+    return window.RoadEyeMedia.tripCards.premiumDate(
+        started,
+        fallback
     );
 }
 
@@ -2114,34 +1806,161 @@ async function selectTrip(
 }
 
 
+function buildTripPremiumHeader(
+    trip
+) {
+    const module = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripHeader
+    );
+
+    if (!module) {
+        console.error(
+            "El módulo tripHeader no está disponible."
+        );
+
+        return "";
+    }
+
+    return module.build(
+        trip,
+        {
+            escapeHtml,
+            formatDistance,
+            formatLongDuration
+        }
+    );
+}
+
+
+function bindTripPremiumHeader() {
+    const module = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripHeader
+    );
+
+    if (!module) {
+        return;
+    }
+
+    const details = document.getElementById(
+        "tripDetails"
+    );
+
+    if (details) {
+        module.bind(
+            details,
+            {
+                playTrip: () => {
+                    startContinuousTripPlayback(
+                        selectedTrip
+                    );
+                }
+            }
+        );
+    }
+}
+
+
+function buildTripSegments(
+    trip
+) {
+    const module = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripSegments
+    );
+
+    if (!module) {
+        console.error(
+            "El módulo tripSegments no está disponible."
+        );
+
+        return "";
+    }
+
+    return module.build(
+        trip,
+        {
+            escapeHtml,
+            formatSeconds
+        }
+    );
+}
+
+
+function bindTripSegments() {
+    const module = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripSegments
+    );
+
+    const details = document.getElementById(
+        "tripDetails"
+    );
+
+    if (!module || !details) {
+        return;
+    }
+
+    module.bind(
+        details,
+        {
+            openSegment: openTripSegment
+        }
+    );
+}
+
+
+function openTripSegment(
+    segmentName
+) {
+    if (!segmentName) {
+        return;
+    }
+
+    popupManager.close();
+
+    window.setTimeout(
+        () => {
+            popupManager.open(
+                "videos"
+            );
+
+            window.setTimeout(
+                async () => {
+                    await loadVideos();
+
+                    const target = Array.from(
+                        document.querySelectorAll(
+                            ".video-list-item"
+                        )
+                    ).find(
+                        item => (
+                            item.dataset.videoName
+                            === segmentName
+                        )
+                    );
+
+                    if (target) {
+                        target.click();
+                    }
+                },
+                250
+            );
+        },
+        100
+    );
+}
+
+
 function renderTripDetails(trip) {
     const details = document.getElementById(
         "tripDetails"
     );
 
-    const segments = trip.segments
-        .map((segment, index) => {
-            return `
-                <button
-                    class="trip-segment"
-                    type="button"
-                    data-segment="${escapeHtml(segment.filename)}"
-                >
-                    <span>
-                        ${index + 1}
-                    </span>
-
-                    <strong>
-                        ${escapeHtml(segment.filename)}
-                    </strong>
-
-                    <small>
-                        ${formatSeconds(segment.duration)}
-                    </small>
-                </button>
-            `;
-        })
-        .join("");
+    const segmentsHtml = buildTripSegments(
+        trip
+    );
 
     const events = (
         Array.isArray(trip.events)
@@ -2236,275 +2055,11 @@ function renderTripDetails(trip) {
         events
     );
 
-    const tripVisual = tripVisualState(
-        trip
-    );
-
-    const photoEvents = events.filter(
-        event => event.type === "photo"
-    );
-
-    const protectedSegments = (
-        Array.isArray(trip.segments)
-        ? trip.segments.filter(
-            segment => Boolean(
-                segment.protected
-            )
-        )
-        : []
-    );
-
-    const tripIsProtected = (
-        protectedSegments.length > 0
-        || events.some(
-            event => Boolean(
-                event.protected
-            )
-        )
-    );
-
-    const heroThumbnail = (
-        Array.isArray(trip.segments)
-        && trip.segments.length
-        && trip.segments[0].filename
-        ? (
-            "/api/videos/thumbnail/"
-            + encodeURIComponent(
-                trip.segments[0].filename
-            )
-        )
-        : null
-    );
-
     details.innerHTML = `
         <div class="trip-details-content">
-            <section
-                class="
-                    trip-premium-hero
-                    trip-hero-${tripVisual.state}
-                "
-            >
-                <div class="trip-hero-media">
-                    ${
-                        heroThumbnail
-                        ? `
-                            <img
-                                src="${escapeHtml(heroThumbnail)}"
-                                alt=""
-                                class="trip-hero-image"
-                                onerror="
-                                    this.classList.add('hidden');
-                                    this.nextElementSibling.classList.remove('hidden');
-                                "
-                            >
-
-                            <div class="trip-hero-fallback hidden">
-                                ${tripVisual.icon}
-                            </div>
-                        `
-                        : `
-                            <div class="trip-hero-fallback">
-                                ${tripVisual.icon}
-                            </div>
-                        `
-                    }
-
-                    <div class="trip-hero-overlay"></div>
-
-                    <div class="trip-hero-topline">
-                        <span
-                            class="
-                                trip-hero-type
-                                hero-type-${tripVisual.state}
-                            "
-                        >
-                            <span>${tripVisual.icon}</span>
-                            ${escapeHtml(tripVisual.label)}
-                        </span>
-
-                        ${
-                            tripIsProtected
-                            ? `
-                                <span class="trip-hero-protected">
-                                    🛡 Protegido
-                                </span>
-                            `
-                            : ""
-                        }
-                    </div>
-
-                    <div class="trip-hero-title">
-                        <span>Trayecto RoadEye</span>
-
-                        <strong>
-                            ${escapeHtml(
-                                premiumTripDate(
-                                    trip.started,
-                                    trip.date
-                                )
-                            )}
-                        </strong>
-
-                        <small>
-                            ${escapeHtml(trip.time)}
-                            ·
-                            ${escapeHtml(trip.duration)}
-                        </small>
-                    </div>
-                </div>
-
-                <div class="trip-hero-body">
-                    <div class="trip-hero-kpis">
-                        <div class="hero-kpi primary">
-                            <span class="hero-kpi-icon">⌁</span>
-
-                            <span>
-                                <small>Distancia</small>
-
-                                <strong>
-                                    ${formatDistance(
-                                        trip.distance?.kilometers || 0
-                                    )}
-                                </strong>
-                            </span>
-                        </div>
-
-                        <div class="hero-kpi">
-                            <span class="hero-kpi-icon">↑</span>
-
-                            <span>
-                                <small>Velocidad máxima</small>
-
-                                <strong>
-                                    ${Number(
-                                        trip.speed?.max || 0
-                                    ).toFixed(1)}
-                                    km/h
-                                </strong>
-                            </span>
-                        </div>
-
-                        <div class="hero-kpi">
-                            <span class="hero-kpi-icon">▶</span>
-
-                            <span>
-                                <small>En movimiento</small>
-
-                                <strong>
-                                    ${formatLongDuration(
-                                        trip.motion?.moving_seconds || 0
-                                    )}
-                                </strong>
-                            </span>
-                        </div>
-
-                        <div class="hero-kpi">
-                            <span class="hero-kpi-icon">Ⅱ</span>
-
-                            <span>
-                                <small>Tiempo parado</small>
-
-                                <strong>
-                                    ${formatLongDuration(
-                                        trip.motion?.stopped_seconds || 0
-                                    )}
-                                </strong>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="trip-hero-counters">
-                        <span>
-                            <strong>
-                                ${Number(
-                                    trip.segment_count || 0
-                                )}
-                            </strong>
-
-                            <small>Vídeos</small>
-                        </span>
-
-                        <span>
-                            <strong>
-                                ${photoEvents.length}
-                            </strong>
-
-                            <small>Fotografías</small>
-                        </span>
-
-                        <span>
-                            <strong>
-                                ${Number(
-                                    trip.event_count
-                                    || events.length
-                                    || 0
-                                )}
-                            </strong>
-
-                            <small>Eventos</small>
-                        </span>
-
-                        <span>
-                            <strong>
-                                ${protectedSegments.length}
-                            </strong>
-
-                            <small>Protegidos</small>
-                        </span>
-
-                        <span>
-                            <strong>
-                                ${Number(
-                                    trip.route_points || 0
-                                )}
-                            </strong>
-
-                            <small>Puntos GPS</small>
-                        </span>
-                    </div>
-
-                    <nav
-                        class="trip-hero-navigation"
-                        aria-label="Secciones del viaje"
-                    >
-                        <button
-                            class="trip-hero-nav-button"
-                            type="button"
-                            data-trip-section="tripTimelineSection"
-                        >
-                            <span>⌁</span>
-                            Timeline
-                        </button>
-
-                        <button
-                            class="trip-hero-nav-button"
-                            type="button"
-                            data-trip-section="tripMapSection"
-                        >
-                            <span>⌖</span>
-                            Mapa
-                        </button>
-
-                        <button
-                            class="trip-hero-nav-button"
-                            type="button"
-                            data-trip-section="tripEventsSection"
-                        >
-                            <span>⚠</span>
-                            Eventos
-                        </button>
-
-                        <button
-                            class="trip-hero-nav-button"
-                            type="button"
-                            data-trip-section="tripVideosSection"
-                        >
-                            <span>▶</span>
-                            Vídeos
-                        </button>
-                    </nav>
-                </div>
-            </section>
+            ${buildTripPremiumHeader(
+                trip
+            )}
 
             <section
                 id="tripTimelineSection"
@@ -2554,45 +2109,13 @@ function renderTripDetails(trip) {
                 <h3>Vídeos del viaje</h3>
 
                 <div class="trip-segments">
-                    ${segments}
+                    ${segmentsHtml}
                 </div>
             </section>
         </div>
     `;
 
-    document.querySelectorAll(
-        ".trip-hero-nav-button"
-    ).forEach((button) => {
-        button.onclick = () => {
-            const target = document.getElementById(
-                button.dataset.tripSection
-            );
-
-            if (!target) {
-                return;
-            }
-
-            target.scrollIntoView(
-                {
-                    behavior: "smooth",
-                    block: "start"
-                }
-            );
-
-            target.classList.add(
-                "section-highlight"
-            );
-
-            window.setTimeout(
-                () => {
-                    target.classList.remove(
-                        "section-highlight"
-                    );
-                },
-                900
-            );
-        };
-    });
+    bindTripPremiumHeader();
 
     document.querySelectorAll(
         ".timeline-event"
@@ -2656,42 +2179,7 @@ function renderTripDetails(trip) {
         };
     });
 
-    document.querySelectorAll(
-        ".trip-segment"
-    ).forEach((button) => {
-        button.onclick = () => {
-            popupManager.close();
-
-            window.setTimeout(
-                () => {
-                    popupManager.open("videos");
-
-                    window.setTimeout(
-                        async () => {
-                            await loadVideos();
-
-                            const target = Array.from(
-                                document.querySelectorAll(
-                                    ".video-list-item"
-                                )
-                            ).find(
-                                item => (
-                                    item.dataset.videoName
-                                    === button.dataset.segment
-                                )
-                            );
-
-                            if (target) {
-                                target.click();
-                            }
-                        },
-                        250
-                    );
-                },
-                100
-            );
-        };
-    });
+    bindTripSegments();
 
     window.setTimeout(
         renderTripMap,
@@ -3830,4 +3318,626 @@ function normalizedTrackPoint(
             ) || 0
         )
     };
+}
+
+
+// ============================================================
+// Reproductor continuo de viajes
+// ============================================================
+
+const continuousTripPlayback = {
+    active: false,
+    tripId: null,
+    tripName: null,
+    segments: [],
+    currentIndex: -1,
+    player: null,
+    endedHandler: null,
+    sourceChangeToken: 0
+};
+
+
+function startContinuousTripPlayback(
+    trip
+) {
+    const segments = (
+        Array.isArray(trip?.segments)
+        ? trip.segments
+        : []
+    ).filter((segment) => {
+        return Boolean(
+            segment
+            && segment.filename
+        );
+    });
+
+    if (!segments.length) {
+        window.alert(
+            "Este viaje no contiene vídeos."
+        );
+
+        return;
+    }
+
+    stopContinuousTripPlayback(
+        {
+            closePlayer: false
+        }
+    );
+
+    continuousTripPlayback.active = true;
+    continuousTripPlayback.tripId = (
+        trip.trip_id || null
+    );
+    continuousTripPlayback.tripName = (
+        trip.trip_name || "Viaje"
+    );
+    continuousTripPlayback.segments = (
+        segments.map(
+            segment => ({
+                ...segment
+            })
+        )
+    );
+    continuousTripPlayback.currentIndex = 0;
+
+    popupManager.close();
+
+    window.setTimeout(
+        () => {
+            popupManager.open(
+                "videos"
+            );
+
+            waitForTripVideoBrowser(
+                0
+            );
+        },
+        120
+    );
+}
+
+
+function waitForTripVideoBrowser(
+    attempt
+) {
+    if (!continuousTripPlayback.active) {
+        return;
+    }
+
+    const maximumAttempts = 40;
+
+    const list = document.getElementById(
+        "videoList"
+    );
+
+    const player = document.getElementById(
+        "videoPlayer"
+    );
+
+    if (list && player) {
+        prepareContinuousTripInterface();
+
+        loadVideos()
+            .then(() => {
+                playContinuousTripSegment(
+                    continuousTripPlayback.currentIndex
+                );
+            })
+            .catch((error) => {
+                console.error(
+                    "No se pudieron cargar los vídeos:",
+                    error
+                );
+
+                stopContinuousTripPlayback();
+            });
+
+        return;
+    }
+
+    if (attempt >= maximumAttempts) {
+        window.alert(
+            "No se pudo abrir el reproductor del viaje."
+        );
+
+        stopContinuousTripPlayback();
+
+        return;
+    }
+
+    window.setTimeout(
+        () => {
+            waitForTripVideoBrowser(
+                attempt + 1
+            );
+        },
+        100
+    );
+}
+
+
+function prepareContinuousTripInterface() {
+    const player = document.getElementById(
+        "videoPlayer"
+    );
+
+    const playerContent = document.getElementById(
+        "videoPlayerContent"
+    );
+
+    if (!player || !playerContent) {
+        return;
+    }
+
+    continuousTripPlayback.player = player;
+
+    let bar = document.getElementById(
+        "continuousTripBar"
+    );
+
+    if (!bar) {
+        bar = document.createElement(
+            "section"
+        );
+
+        bar.id = "continuousTripBar";
+        bar.className = "continuous-trip-bar";
+
+        bar.innerHTML = `
+            <div class="continuous-trip-info">
+                <span class="continuous-trip-mode">
+                    Viaje completo
+                </span>
+
+                <strong id="continuousTripTitle">
+                    RoadEye
+                </strong>
+
+                <small id="continuousTripProgress">
+                    Preparando reproducción…
+                </small>
+            </div>
+
+            <div class="continuous-trip-controls">
+                <button
+                    id="continuousTripPrevious"
+                    class="continuous-trip-control"
+                    type="button"
+                    title="Segmento anterior"
+                >
+                    ◀
+                </button>
+
+                <button
+                    id="continuousTripNext"
+                    class="continuous-trip-control"
+                    type="button"
+                    title="Segmento siguiente"
+                >
+                    ▶
+                </button>
+
+                <button
+                    id="continuousTripStop"
+                    class="
+                        continuous-trip-control
+                        continuous-trip-stop
+                    "
+                    type="button"
+                    title="Salir de la reproducción del viaje"
+                >
+                    ✕
+                </button>
+            </div>
+        `;
+
+        playerContent.insertBefore(
+            bar,
+            playerContent.firstChild
+        );
+    }
+
+    const title = document.getElementById(
+        "continuousTripTitle"
+    );
+
+    if (title) {
+        title.textContent = (
+            continuousTripPlayback.tripName
+            || "Viaje RoadEye"
+        );
+    }
+
+    const previousButton = document.getElementById(
+        "continuousTripPrevious"
+    );
+
+    const nextButton = document.getElementById(
+        "continuousTripNext"
+    );
+
+    const stopButton = document.getElementById(
+        "continuousTripStop"
+    );
+
+    if (previousButton) {
+        previousButton.onclick = () => {
+            playContinuousTripSegment(
+                continuousTripPlayback.currentIndex - 1
+            );
+        };
+    }
+
+    if (nextButton) {
+        nextButton.onclick = () => {
+            playContinuousTripSegment(
+                continuousTripPlayback.currentIndex + 1
+            );
+        };
+    }
+
+    if (stopButton) {
+        stopButton.onclick = () => {
+            stopContinuousTripPlayback(
+                {
+                    closePlayer: false
+                }
+            );
+        };
+    }
+
+    bindContinuousTripPlayer(
+        player
+    );
+
+    updateContinuousTripInterface();
+}
+
+
+function bindContinuousTripPlayer(
+    player
+) {
+    if (
+        continuousTripPlayback.endedHandler
+        && continuousTripPlayback.player
+    ) {
+        continuousTripPlayback.player.removeEventListener(
+            "ended",
+            continuousTripPlayback.endedHandler
+        );
+    }
+
+    const endedHandler = () => {
+        if (!continuousTripPlayback.active) {
+            return;
+        }
+
+        const nextIndex = (
+            continuousTripPlayback.currentIndex
+            + 1
+        );
+
+        if (
+            nextIndex
+            < continuousTripPlayback.segments.length
+        ) {
+            playContinuousTripSegment(
+                nextIndex
+            );
+
+            return;
+        }
+
+        finishContinuousTripPlayback();
+    };
+
+    continuousTripPlayback.endedHandler = (
+        endedHandler
+    );
+
+    continuousTripPlayback.player = player;
+
+    player.addEventListener(
+        "ended",
+        endedHandler
+    );
+}
+
+
+function playContinuousTripSegment(
+    index
+) {
+    if (!continuousTripPlayback.active) {
+        return;
+    }
+
+    const segments = (
+        continuousTripPlayback.segments
+    );
+
+    if (
+        index < 0
+        || index >= segments.length
+    ) {
+        return;
+    }
+
+    const segment = segments[index];
+
+    continuousTripPlayback.currentIndex = index;
+    continuousTripPlayback.sourceChangeToken += 1;
+
+    const currentToken = (
+        continuousTripPlayback.sourceChangeToken
+    );
+
+    updateContinuousTripInterface();
+
+    selectContinuousTripListItem(
+        segment.filename
+    );
+
+    openVideoForContinuousTrip(
+        segment.filename,
+        currentToken
+    );
+}
+
+
+function openVideoForContinuousTrip(
+    filename,
+    token
+) {
+    const target = Array.from(
+        document.querySelectorAll(
+            ".video-list-item"
+        )
+    ).find((item) => {
+        return (
+            item.dataset.videoName
+            === filename
+        );
+    });
+
+    if (!target) {
+        console.warn(
+            "No se encontró el segmento:",
+            filename
+        );
+
+        moveToNextAvailableTripSegment();
+
+        return;
+    }
+
+    target.click();
+
+    window.setTimeout(
+        () => {
+            if (
+                !continuousTripPlayback.active
+                || token
+                !== continuousTripPlayback.sourceChangeToken
+            ) {
+                return;
+            }
+
+            const player = document.getElementById(
+                "videoPlayer"
+            );
+
+            if (!player) {
+                return;
+            }
+
+            bindContinuousTripPlayer(
+                player
+            );
+
+            const playWhenReady = () => {
+                if (
+                    !continuousTripPlayback.active
+                    || token
+                    !== continuousTripPlayback.sourceChangeToken
+                ) {
+                    return;
+                }
+
+                const promise = player.play();
+
+                if (
+                    promise
+                    && typeof promise.catch === "function"
+                ) {
+                    promise.catch(
+                        () => {
+                            /*
+                             * Algunos navegadores bloquean el
+                             * inicio automático. El usuario puede
+                             * pulsar Play una vez.
+                             */
+                        }
+                    );
+                }
+            };
+
+            if (player.readyState >= 2) {
+                playWhenReady();
+            } else {
+                player.addEventListener(
+                    "canplay",
+                    playWhenReady,
+                    {
+                        once: true
+                    }
+                );
+            }
+        },
+        180
+    );
+}
+
+
+function selectContinuousTripListItem(
+    filename
+) {
+    document.querySelectorAll(
+        ".video-list-item"
+    ).forEach((item) => {
+        item.classList.toggle(
+            "continuous-trip-current",
+            item.dataset.videoName === filename
+        );
+    });
+}
+
+
+function moveToNextAvailableTripSegment() {
+    const nextIndex = (
+        continuousTripPlayback.currentIndex
+        + 1
+    );
+
+    if (
+        nextIndex
+        < continuousTripPlayback.segments.length
+    ) {
+        playContinuousTripSegment(
+            nextIndex
+        );
+
+        return;
+    }
+
+    finishContinuousTripPlayback();
+}
+
+
+function updateContinuousTripInterface() {
+    const total = (
+        continuousTripPlayback.segments.length
+    );
+
+    const current = (
+        continuousTripPlayback.currentIndex
+    );
+
+    const progress = document.getElementById(
+        "continuousTripProgress"
+    );
+
+    const previousButton = document.getElementById(
+        "continuousTripPrevious"
+    );
+
+    const nextButton = document.getElementById(
+        "continuousTripNext"
+    );
+
+    if (progress) {
+        const segment = (
+            continuousTripPlayback.segments[current]
+        );
+
+        progress.textContent = (
+            `Segmento ${current + 1} de ${total}`
+            + (
+                segment?.filename
+                ? ` · ${segment.filename}`
+                : ""
+            )
+        );
+    }
+
+    if (previousButton) {
+        previousButton.disabled = (
+            current <= 0
+        );
+    }
+
+    if (nextButton) {
+        nextButton.disabled = (
+            current >= total - 1
+        );
+    }
+}
+
+
+function finishContinuousTripPlayback() {
+    const player = document.getElementById(
+        "videoPlayer"
+    );
+
+    if (player) {
+        player.pause();
+    }
+
+    const progress = document.getElementById(
+        "continuousTripProgress"
+    );
+
+    if (progress) {
+        progress.textContent = (
+            "Viaje finalizado"
+        );
+    }
+
+    document.querySelectorAll(
+        ".video-list-item"
+    ).forEach((item) => {
+        item.classList.remove(
+            "continuous-trip-current"
+        );
+    });
+
+    continuousTripPlayback.active = false;
+}
+
+
+function stopContinuousTripPlayback(
+    {
+        closePlayer = false
+    } = {}
+) {
+    const player = continuousTripPlayback.player;
+
+    if (
+        player
+        && continuousTripPlayback.endedHandler
+    ) {
+        player.removeEventListener(
+            "ended",
+            continuousTripPlayback.endedHandler
+        );
+    }
+
+    const bar = document.getElementById(
+        "continuousTripBar"
+    );
+
+    if (bar) {
+        bar.remove();
+    }
+
+    document.querySelectorAll(
+        ".video-list-item"
+    ).forEach((item) => {
+        item.classList.remove(
+            "continuous-trip-current"
+        );
+    });
+
+    continuousTripPlayback.active = false;
+    continuousTripPlayback.tripId = null;
+    continuousTripPlayback.tripName = null;
+    continuousTripPlayback.segments = [];
+    continuousTripPlayback.currentIndex = -1;
+    continuousTripPlayback.player = null;
+    continuousTripPlayback.endedHandler = null;
+    continuousTripPlayback.sourceChangeToken += 1;
+
+    if (closePlayer) {
+        popupManager.close();
+    }
 }
