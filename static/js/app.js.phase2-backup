@@ -201,49 +201,11 @@ class PopupManager {
                                     id="videoPlayerContent"
                                     class="player-content hidden"
                                 >
-                                    <div class="media-tabs">
-                                        <button
-                                            id="videoTabButton"
-                                            class="media-tab active"
-                                            type="button"
-                                        >
-                                            Vídeo
-                                        </button>
-
-                                        <button
-                                            id="mapTabButton"
-                                            class="media-tab"
-                                            type="button"
-                                        >
-                                            Mapa y ruta
-                                        </button>
-                                    </div>
-
-                                    <div
-                                        id="videoTabPanel"
-                                        class="media-tab-panel"
-                                    >
-                                        <video
-                                            id="videoPlayer"
-                                            controls
-                                            preload="metadata"
-                                        ></video>
-                                    </div>
-
-                                    <div
-                                        id="mapTabPanel"
-                                        class="media-tab-panel hidden"
-                                    >
-                                        <div id="routeMap"></div>
-
-                                        <div
-                                            id="routeEmpty"
-                                            class="route-empty hidden"
-                                        >
-                                            Esta grabación no contiene
-                                            recorrido GPS.
-                                        </div>
-                                    </div>
+                                    <video
+                                        id="videoPlayer"
+                                        controls
+                                        preload="metadata"
+                                    ></video>
 
                                     <div class="player-metadata">
                                         <strong id="videoPlayerName"></strong>
@@ -573,33 +535,7 @@ function renderVideoList(videos) {
 
     list.innerHTML = "";
 
-    let lastDate = null;
-
     for (const video of videos) {
-        if (video.date !== lastDate) {
-            const dateHeading = (
-                document.createElement(
-                    "div"
-                )
-            );
-
-            dateHeading.className = (
-                "video-date-heading"
-            );
-
-            dateHeading.textContent = (
-                dateSectionLabel(
-                    video.date
-                )
-            );
-
-            list.appendChild(
-                dateHeading
-            );
-
-            lastDate = video.date;
-        }
-
         const button = document.createElement(
             "button"
         );
@@ -615,64 +551,22 @@ function renderVideoList(videos) {
             video.kind
         );
 
-        const thumbnail = (
-            video.thumbnail_url
-            ? `
-                <img
-                    class="video-thumbnail"
-                    src="${escapeHtml(video.thumbnail_url)}"
-                    alt=""
-                    loading="lazy"
-                >
-            `
-            : `
-                <span class="video-list-icon">
-                    ▶
-                </span>
-            `
-        );
-
-        const protectedBadge = (
-            video.protected
-            ? `
-                <span
-                    class="video-protected"
-                    title="Grabación protegida"
-                >
-                    ★
-                </span>
-            `
-            : ""
-        );
-
-        const speedText = (
-            Number(video.speed.max) > 0
-            ? ` · Máx. ${video.speed.max} km/h`
-            : ""
-        );
-
         button.innerHTML = `
-            <span class="video-thumbnail-wrap">
-                ${thumbnail}
-
-                <span class="video-duration">
-                    ${escapeHtml(video.duration)}
-                </span>
+            <span class="video-list-icon">
+                ▶
             </span>
 
             <span class="video-list-main">
                 <strong>
-                    ${escapeHtml(video.time)}
-                    ${protectedBadge}
+                    ${escapeHtml(video.name)}
                 </strong>
 
                 <span>
+                    ${escapeHtml(video.date)}
+                    ·
+                    ${escapeHtml(video.time)}
+                    ·
                     ${escapeHtml(video.size)}
-                    ${escapeHtml(speedText)}
-                </span>
-
-                <span class="video-file-name">
-                    ${escapeHtml(video.name)}
                 </span>
             </span>
 
@@ -693,53 +587,6 @@ function renderVideoList(videos) {
             button
         );
     }
-}
-
-
-function dateSectionLabel(dateText) {
-    const today = new Date();
-
-    const todayText = [
-        String(
-            today.getDate()
-        ).padStart(2, "0"),
-
-        String(
-            today.getMonth() + 1
-        ).padStart(2, "0"),
-
-        today.getFullYear()
-    ].join("/");
-
-    const yesterday = new Date(
-        today
-    );
-
-    yesterday.setDate(
-        yesterday.getDate() - 1
-    );
-
-    const yesterdayText = [
-        String(
-            yesterday.getDate()
-        ).padStart(2, "0"),
-
-        String(
-            yesterday.getMonth() + 1
-        ).padStart(2, "0"),
-
-        yesterday.getFullYear()
-    ].join("/");
-
-    if (dateText === todayText) {
-        return "Hoy";
-    }
-
-    if (dateText === yesterdayText) {
-        return "Ayer";
-    }
-
-    return dateText;
 }
 
 
@@ -781,112 +628,30 @@ function selectVideo(
         "hidden"
     );
 
-    initializeMediaTabs();
-    showMediaTab("video");
-
-    player.src = video.stream_url;
+    player.src = (
+        video.stream_url
+    );
 
     document.getElementById(
         "videoPlayerName"
     ).textContent = video.name;
 
-    const startGps = (
-        video.gps.start_text
-        || "Sin posición GPS"
-    );
-
-    const endGps = (
-        video.gps.end_text
-        || "Sin posición GPS"
-    );
-
     document.getElementById(
         "videoPlayerDetails"
-    ).innerHTML = `
-        <div class="metadata-grid">
-            <div>
-                <span>Fecha</span>
-                <strong>
-                    ${escapeHtml(video.date)}
-                    ·
-                    ${escapeHtml(video.time)}
-                </strong>
-            </div>
-
-            <div>
-                <span>Duración</span>
-                <strong>
-                    ${escapeHtml(video.duration)}
-                </strong>
-            </div>
-
-            <div>
-                <span>Tipo</span>
-                <strong>
-                    ${escapeHtml(
-                        videoKindLabel(video.kind)
-                    )}
-                </strong>
-            </div>
-
-            <div>
-                <span>Tamaño</span>
-                <strong>
-                    ${escapeHtml(video.size)}
-                </strong>
-            </div>
-
-            <div>
-                <span>Velocidad máxima</span>
-                <strong>
-                    ${escapeHtml(video.speed.max)}
-                    km/h
-                </strong>
-            </div>
-
-            <div>
-                <span>Velocidad media</span>
-                <strong>
-                    ${escapeHtml(video.speed.average)}
-                    km/h
-                </strong>
-            </div>
-
-            <div>
-                <span>GPS inicial</span>
-                <strong>
-                    ${escapeHtml(startGps)}
-                </strong>
-            </div>
-
-            <div>
-                <span>GPS final</span>
-                <strong>
-                    ${escapeHtml(endGps)}
-                </strong>
-            </div>
-
-            <div>
-                <span>Protección</span>
-                <strong>
-                    ${video.protected ? "Protegido" : "Normal"}
-                </strong>
-            </div>
-
-            <div>
-                <span>Metadatos</span>
-                <strong>
-                    ${video.has_metadata ? "Completos" : "Vídeo antiguo"}
-                </strong>
-            </div>
-        </div>
-    `;
+    ).textContent = (
+        `${video.date} · `
+        + `${video.time} · `
+        + `${video.size} · `
+        + videoKindLabel(video.kind)
+    );
 
     const download = document.getElementById(
         "videoDownload"
     );
 
-    download.href = video.download_url;
+    download.href = (
+        video.download_url
+    );
 
     download.setAttribute(
         "download",
@@ -1006,277 +771,4 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
-}
-
-
-// ============================================================
-// Mapa y recorrido GPS
-// ============================================================
-
-let routeMap = null;
-let routeLayer = null;
-let routeStartMarker = null;
-let routeEndMarker = null;
-
-
-function initializeMediaTabs() {
-    const videoButton = document.getElementById(
-        "videoTabButton"
-    );
-
-    const mapButton = document.getElementById(
-        "mapTabButton"
-    );
-
-    if (!videoButton || !mapButton) {
-        return;
-    }
-
-    videoButton.onclick = (
-        () => showMediaTab("video")
-    );
-
-    mapButton.onclick = (
-        () => showMediaTab("map")
-    );
-}
-
-
-function showMediaTab(name) {
-    const videoButton = document.getElementById(
-        "videoTabButton"
-    );
-
-    const mapButton = document.getElementById(
-        "mapTabButton"
-    );
-
-    const videoPanel = document.getElementById(
-        "videoTabPanel"
-    );
-
-    const mapPanel = document.getElementById(
-        "mapTabPanel"
-    );
-
-    const showMap = (
-        name === "map"
-    );
-
-    videoButton.classList.toggle(
-        "active",
-        !showMap
-    );
-
-    mapButton.classList.toggle(
-        "active",
-        showMap
-    );
-
-    videoPanel.classList.toggle(
-        "hidden",
-        showMap
-    );
-
-    mapPanel.classList.toggle(
-        "hidden",
-        !showMap
-    );
-
-    if (showMap) {
-        window.setTimeout(
-            () => {
-                renderSelectedVideoRoute();
-
-                if (routeMap) {
-                    routeMap.invalidateSize();
-                }
-            },
-            80
-        );
-    }
-}
-
-
-function renderSelectedVideoRoute() {
-    const mapElement = document.getElementById(
-        "routeMap"
-    );
-
-    const emptyElement = document.getElementById(
-        "routeEmpty"
-    );
-
-    if (!mapElement || !emptyElement) {
-        return;
-    }
-
-    const track = (
-        selectedVideo
-        && Array.isArray(selectedVideo.track)
-        ? selectedVideo.track
-        : []
-    ).filter((point) => {
-        return (
-            Number.isFinite(Number(point.lat))
-            && Number.isFinite(Number(point.lon))
-        );
-    });
-
-    if (!track.length) {
-        mapElement.classList.add(
-            "hidden"
-        );
-
-        emptyElement.classList.remove(
-            "hidden"
-        );
-
-        return;
-    }
-
-    if (typeof L === "undefined") {
-        mapElement.classList.add(
-            "hidden"
-        );
-
-        emptyElement.textContent = (
-            "No se pudo cargar el sistema de mapas."
-        );
-
-        emptyElement.classList.remove(
-            "hidden"
-        );
-
-        return;
-    }
-
-    mapElement.classList.remove(
-        "hidden"
-    );
-
-    emptyElement.classList.add(
-        "hidden"
-    );
-
-    if (!routeMap) {
-        routeMap = L.map(
-            mapElement,
-            {
-                zoomControl: true,
-                attributionControl: true
-            }
-        );
-
-        L.tileLayer(
-            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            {
-                maxZoom: 19,
-                attribution:
-                    "&copy; OpenStreetMap contributors"
-            }
-        ).addTo(
-            routeMap
-        );
-    }
-
-    if (routeLayer) {
-        routeMap.removeLayer(
-            routeLayer
-        );
-    }
-
-    if (routeStartMarker) {
-        routeMap.removeLayer(
-            routeStartMarker
-        );
-    }
-
-    if (routeEndMarker) {
-        routeMap.removeLayer(
-            routeEndMarker
-        );
-    }
-
-    const coordinates = track.map(
-        (point) => [
-            Number(point.lat),
-            Number(point.lon)
-        ]
-    );
-
-    routeLayer = L.polyline(
-        coordinates,
-        {
-            weight: 5,
-            opacity: 0.9
-        }
-    ).addTo(
-        routeMap
-    );
-
-    const first = track[0];
-    const last = track[
-        track.length - 1
-    ];
-
-    routeStartMarker = L.marker(
-        [
-            Number(first.lat),
-            Number(first.lon)
-        ]
-    )
-        .addTo(routeMap)
-        .bindPopup(
-            `Inicio · ${formatTrackTime(first.time)}`
-        );
-
-    routeEndMarker = L.marker(
-        [
-            Number(last.lat),
-            Number(last.lon)
-        ]
-    )
-        .addTo(routeMap)
-        .bindPopup(
-            `Final · ${formatTrackTime(last.time)}`
-        );
-
-    if (coordinates.length === 1) {
-        routeMap.setView(
-            coordinates[0],
-            17
-        );
-    } else {
-        routeMap.fitBounds(
-            routeLayer.getBounds(),
-            {
-                padding: [30, 30]
-            }
-        );
-    }
-}
-
-
-function formatTrackTime(seconds) {
-    const total = Math.max(
-        0,
-        Math.round(
-            Number(seconds) || 0
-        )
-    );
-
-    const minutes = Math.floor(
-        total / 60
-    );
-
-    const remainingSeconds = (
-        total % 60
-    );
-
-    return (
-        String(minutes).padStart(2, "0")
-        + ":"
-        + String(remainingSeconds).padStart(2, "0")
-    );
 }

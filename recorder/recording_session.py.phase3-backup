@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import tempfile
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -86,11 +85,6 @@ class RecordingSession:
         self.speed_sum = 0.0
         self.max_speed = 0.0
 
-        # Recorrido GPS: un punto por segundo aproximadamente.
-        self.track: list[dict[str, float]] = []
-        self._last_track_sample_at: Optional[float] = None
-        self._track_interval_seconds = 1.0
-
         self._thumbnail_frame = None
 
     # ---------------------------------------------------------
@@ -166,12 +160,6 @@ class RecordingSession:
 
         self.end_latitude = latitude_value
         self.end_longitude = longitude_value
-
-        self._append_track_point(
-            latitude=latitude_value,
-            longitude=longitude_value,
-            speed=speed_value,
-        )
 
     # ---------------------------------------------------------
     # Finalización
@@ -283,94 +271,7 @@ class RecordingSession:
                     1,
                 ),
             },
-            "track": list(
-                self.track
-            ),
-            "track_points": len(
-                self.track
-            ),
         }
-
-    def _append_track_point(
-        self,
-        *,
-        latitude: float,
-        longitude: float,
-        speed: float,
-    ) -> None:
-        """
-        Añade como máximo un punto GPS por segundo.
-
-        También evita guardar puntos idénticos consecutivos.
-        """
-
-        now_monotonic = time.monotonic()
-
-        if (
-            self._last_track_sample_at is not None
-            and (
-                now_monotonic
-                - self._last_track_sample_at
-            ) < self._track_interval_seconds
-        ):
-            return
-
-        elapsed = max(
-            0.0,
-            (
-                datetime.now()
-                - self.started_at
-            ).total_seconds(),
-        )
-
-        point = {
-            "time": round(
-                elapsed,
-                2,
-            ),
-            "lat": round(
-                float(latitude),
-                7,
-            ),
-            "lon": round(
-                float(longitude),
-                7,
-            ),
-            "speed": round(
-                max(
-                    0.0,
-                    float(speed),
-                ),
-                1,
-            ),
-        }
-
-        if self.track:
-            previous = self.track[-1]
-
-            same_position = (
-                previous["lat"] == point["lat"]
-                and previous["lon"] == point["lon"]
-            )
-
-            # Si permanece inmóvil, se conserva como máximo
-            # un punto cada cinco segundos.
-            if (
-                same_position
-                and (
-                    point["time"]
-                    - previous["time"]
-                ) < 5.0
-            ):
-                return
-
-        self.track.append(
-            point
-        )
-
-        self._last_track_sample_at = (
-            now_monotonic
-        )
 
     # ---------------------------------------------------------
     # Miniatura

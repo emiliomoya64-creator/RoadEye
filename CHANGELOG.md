@@ -1,3 +1,67 @@
+# 0.6.0-dev
+
+Estado: En desarrollo
+Fecha de inicio: 2026-08-03
+
+## Objetivo principal
+
+RoadEye evoluciona desde una dashcam avanzada hacia una plataforma profesional totalmente configurable, manteniendo la conducción libre de distracciones y desplazando todas las funciones avanzadas a ventanas emergentes.
+
+## HUD
+
+- Nuevo HUD completamente personalizable.
+- Mostrar u ocultar cualquier icono.
+- Orden configurable de todos los elementos.
+- Perfiles de HUD (Minimalista, Normal y Profesional).
+- Transparencia configurable.
+- Tamaño configurable de iconos y texto.
+- Configuración visual desde la propia pantalla.
+- Preparación para editor gráfico del HUD.
+
+## Nueva barra superior
+
+Primera línea:
+
+- Grabación (REC).
+- Vigilancia de aparcamiento.
+- Estado GPS.
+- Velocidad.
+- Captura instantánea de fotografía.
+- Explorador de vídeos.
+- Límite de velocidad.
+
+Segunda línea:
+
+- Nombre de la calle.
+- Coordenadas GPS.
+- Fecha.
+- Hora.
+- Configuración.
+
+## Ventanas emergentes
+
+- Configuración completa mediante rueda dentada.
+- Explorador de vídeos.
+- Explorador de fotografías.
+- Preparación para ventanas flotantes.
+
+## Vigilancia de aparcamiento
+
+- Nuevo modo Parking.
+- Detección automática de movimiento.
+- Grabación automática de eventos.
+- Tiempo mínimo de grabación de 20 segundos.
+- Configuración de sensibilidad.
+- Preparación para futuras ampliaciones.
+
+## Arquitectura
+
+- HUD dividido en widgets independientes.
+- Configuración persistente mediante ConfigManager.
+- Preparación para editor visual del HUD.
+- Preparación para futuras funciones ADAS.
+
+---
 # RoadEye - Historial de versiones
 
 Este documento recoge todos los cambios importantes realizados en el proyecto RoadEye.
