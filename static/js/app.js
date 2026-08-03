@@ -1627,6 +1627,47 @@ function renderTripDetails(trip) {
                 </div>
 
                 <div>
+                    <span>Distancia</span>
+                    <strong>
+                        ${formatDistance(
+                            trip.distance.kilometers
+                        )}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Tiempo en movimiento</span>
+                    <strong>
+                        ${formatLongDuration(
+                            trip.motion.moving_seconds
+                        )}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Tiempo parado</span>
+                    <strong>
+                        ${formatLongDuration(
+                            trip.motion.stopped_seconds
+                        )}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Media en movimiento</span>
+                    <strong>
+                        ${trip.speed.average_moving} km/h
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Porcentaje en marcha</span>
+                    <strong>
+                        ${trip.motion.moving_percent} %
+                    </strong>
+                </div>
+
+                <div>
                     <span>Puntos GPS</span>
                     <strong>${trip.route_points}</strong>
                 </div>
@@ -1829,4 +1870,64 @@ function formatSeconds(value) {
         + ":"
         + String(seconds % 60).padStart(2, "0")
     );
+}
+
+
+function formatDistance(kilometers) {
+    const value = Math.max(
+        0,
+        Number(kilometers) || 0
+    );
+
+    if (value < 1) {
+        return (
+            Math.round(value * 1000)
+            + " m"
+        );
+    }
+
+    return (
+        value.toFixed(2)
+        + " km"
+    );
+}
+
+
+function formatLongDuration(value) {
+    const totalSeconds = Math.max(
+        0,
+        Math.round(
+            Number(value) || 0
+        )
+    );
+
+    const hours = Math.floor(
+        totalSeconds / 3600
+    );
+
+    const minutes = Math.floor(
+        (
+            totalSeconds % 3600
+        ) / 60
+    );
+
+    const seconds = (
+        totalSeconds % 60
+    );
+
+    if (hours > 0) {
+        return (
+            `${hours} h `
+            + `${minutes} min`
+        );
+    }
+
+    if (minutes > 0) {
+        return (
+            `${minutes} min `
+            + `${seconds} s`
+        );
+    }
+
+    return `${seconds} s`;
 }

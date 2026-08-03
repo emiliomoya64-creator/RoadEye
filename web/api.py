@@ -1200,6 +1200,28 @@ def _trip_item(
     ):
         gps = {}
 
+    distance = data.get(
+        "distance",
+        {},
+    )
+
+    if not isinstance(
+        distance,
+        dict,
+    ):
+        distance = {}
+
+    motion = data.get(
+        "motion",
+        {},
+    )
+
+    if not isinstance(
+        motion,
+        dict,
+    ):
+        motion = {}
+
     segments = data.get(
         "segments",
         [],
@@ -1294,6 +1316,73 @@ def _trip_item(
                 _safe_number(
                     speed.get(
                         "average",
+                        0,
+                    )
+                ),
+                1,
+            ),
+            "average_moving": round(
+                _safe_number(
+                    speed.get(
+                        "average_moving",
+                        0,
+                    )
+                ),
+                1,
+            ),
+        },
+        "distance": {
+            "meters": round(
+                _safe_number(
+                    distance.get(
+                        "meters",
+                        0,
+                    )
+                ),
+                1,
+            ),
+            "kilometers": round(
+                _safe_number(
+                    distance.get(
+                        "kilometers",
+                        0,
+                    )
+                ),
+                3,
+            ),
+        },
+        "motion": {
+            "threshold_kmh": round(
+                _safe_number(
+                    motion.get(
+                        "threshold_kmh",
+                        3.0,
+                    )
+                ),
+                1,
+            ),
+            "moving_seconds": round(
+                _safe_number(
+                    motion.get(
+                        "moving_seconds",
+                        0,
+                    )
+                ),
+                2,
+            ),
+            "stopped_seconds": round(
+                _safe_number(
+                    motion.get(
+                        "stopped_seconds",
+                        duration,
+                    )
+                ),
+                2,
+            ),
+            "moving_percent": round(
+                _safe_number(
+                    motion.get(
+                        "moving_percent",
                         0,
                     )
                 ),

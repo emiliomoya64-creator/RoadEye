@@ -107,6 +107,7 @@
     "test": {},
     "trips": {
         "enabled": true,
-        "folder": "trips"
+        "folder": "trips",
+        "moving_speed_threshold_kmh": 3.0
     }
 }

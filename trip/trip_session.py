@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from core.config_manager import config
+
 
 class TripSession:
     """
@@ -75,6 +77,16 @@ class TripSession:
 
         self._weighted_speed_sum = 0.0
         self._weighted_speed_duration = 0.0
+
+        self.moving_speed_threshold_kmh = max(
+            0.0,
+            self._safe_float(
+                config.get(
+                    "trips.moving_speed_threshold_kmh",
+                    3.0,
+                )
+            ),
+        )
 
     # ---------------------------------------------------------
     # Segmentos
@@ -362,6 +374,10 @@ class TripSession:
                 / self._weighted_speed_duration
             )
 
+        route_statistics = (
+            self._calculate_route_statistics()
+        )
+
         gps_start = None
         gps_end = None
 
@@ -416,6 +432,49 @@ class TripSession:
                     average_speed,
                     1,
                 ),
+                "average_moving": round(
+                    route_statistics[
+                        "average_moving_speed_kmh"
+                    ],
+                    1,
+                ),
+            },
+            "distance": {
+                "meters": round(
+                    route_statistics[
+                        "distance_meters"
+                    ],
+                    1,
+                ),
+                "kilometers": round(
+                    route_statistics[
+                        "distance_kilometers"
+                    ],
+                    3,
+                ),
+            },
+            "motion": {
+                "threshold_kmh": (
+                    self.moving_speed_threshold_kmh
+                ),
+                "moving_seconds": round(
+                    route_statistics[
+                        "moving_seconds"
+                    ],
+                    2,
+                ),
+                "stopped_seconds": round(
+                    route_statistics[
+                        "stopped_seconds"
+                    ],
+                    2,
+                ),
+                "moving_percent": round(
+                    route_statistics[
+                        "moving_percent"
+                    ],
+                    1,
+                ),
             },
             "gps": {
                 "start": gps_start,
@@ -428,6 +487,266 @@ class TripSession:
                 self.route
             ),
         }
+
+    # ---------------------------------------------------------
+    # Estadísticas del recorrido
+    # ---------------------------------------------------------
+
+    def _calculate_route_statistics(
+        self,
+    ) -> dict[str, float]:
+        distance_meters = 0.0
+        moving_seconds = 0.0
+        stopped_seconds = 0.0
+
+        moving_speed_sum = 0.0
+        moving_speed_duration = 0.0
+
+        if len(self.route) < 2:
+            return {
+                "distance_meters": 0.0,
+                "distance_kilometers": 0.0,
+                "moving_seconds": 0.0,
+                "stopped_seconds": max(
+                    0.0,
+                    self.total_duration,
+                ),
+                "moving_percent": 0.0,
+                "average_moving_speed_kmh": 0.0,
+            }
+
+        for previous, current in zip(
+            self.route,
+            self.route[1:],
+        ):
+            delta_seconds = max(
+                0.0,
+                self._safe_float(
+                    current.get(
+                        "time",
+                        0,
+                    )
+                )
+                - self._safe_float(
+                    previous.get(
+                        "time",
+                        0,
+                    )
+                ),
+            )
+
+            if delta_seconds <= 0:
+                continue
+
+            segment_distance = (
+                self._haversine_meters(
+                    previous.get(
+                        "lat"
+                    ),
+                    previous.get(
+                        "lon"
+                    ),
+                    current.get(
+                        "lat"
+                    ),
+                    current.get(
+                        "lon"
+                    ),
+                )
+            )
+
+            # Filtra saltos GPS claramente imposibles.
+            maximum_reasonable_distance = (
+                max(
+                    50.0,
+                    delta_seconds
+                    * 80.0,
+                )
+            )
+
+            if (
+                0.0
+                <= segment_distance
+                <= maximum_reasonable_distance
+            ):
+                distance_meters += (
+                    segment_distance
+                )
+
+            current_speed = max(
+                0.0,
+                self._safe_float(
+                    current.get(
+                        "speed",
+                        0,
+                    )
+                ),
+            )
+
+            if (
+                current_speed
+                >= self.moving_speed_threshold_kmh
+            ):
+                moving_seconds += (
+                    delta_seconds
+                )
+
+                moving_speed_sum += (
+                    current_speed
+                    * delta_seconds
+                )
+
+                moving_speed_duration += (
+                    delta_seconds
+                )
+
+            else:
+                stopped_seconds += (
+                    delta_seconds
+                )
+
+        tracked_seconds = (
+            moving_seconds
+            + stopped_seconds
+        )
+
+        if self.total_duration > tracked_seconds:
+            stopped_seconds += (
+                self.total_duration
+                - tracked_seconds
+            )
+
+        total_motion_seconds = (
+            moving_seconds
+            + stopped_seconds
+        )
+
+        moving_percent = 0.0
+
+        if total_motion_seconds > 0:
+            moving_percent = (
+                moving_seconds
+                / total_motion_seconds
+                * 100.0
+            )
+
+        average_moving_speed = 0.0
+
+        if moving_speed_duration > 0:
+            average_moving_speed = (
+                moving_speed_sum
+                / moving_speed_duration
+            )
+
+        return {
+            "distance_meters": (
+                distance_meters
+            ),
+            "distance_kilometers": (
+                distance_meters
+                / 1000.0
+            ),
+            "moving_seconds": (
+                moving_seconds
+            ),
+            "stopped_seconds": (
+                stopped_seconds
+            ),
+            "moving_percent": (
+                moving_percent
+            ),
+            "average_moving_speed_kmh": (
+                average_moving_speed
+            ),
+        }
+
+    @classmethod
+    def _haversine_meters(
+        cls,
+        latitude_1,
+        longitude_1,
+        latitude_2,
+        longitude_2,
+    ) -> float:
+        lat_1 = cls._optional_float(
+            latitude_1
+        )
+
+        lon_1 = cls._optional_float(
+            longitude_1
+        )
+
+        lat_2 = cls._optional_float(
+            latitude_2
+        )
+
+        lon_2 = cls._optional_float(
+            longitude_2
+        )
+
+        if None in {
+            lat_1,
+            lon_1,
+            lat_2,
+            lon_2,
+        }:
+            return 0.0
+
+        earth_radius_meters = (
+            6371008.8
+        )
+
+        latitude_delta = math.radians(
+            lat_2 - lat_1
+        )
+
+        longitude_delta = math.radians(
+            lon_2 - lon_1
+        )
+
+        latitude_1_radians = math.radians(
+            lat_1
+        )
+
+        latitude_2_radians = math.radians(
+            lat_2
+        )
+
+        haversine_value = (
+            math.sin(
+                latitude_delta / 2.0
+            ) ** 2
+            + math.cos(
+                latitude_1_radians
+            )
+            * math.cos(
+                latitude_2_radians
+            )
+            * math.sin(
+                longitude_delta / 2.0
+            ) ** 2
+        )
+
+        central_angle = (
+            2.0
+            * math.atan2(
+                math.sqrt(
+                    haversine_value
+                ),
+                math.sqrt(
+                    max(
+                        0.0,
+                        1.0
+                        - haversine_value,
+                    )
+                ),
+            )
+        )
+
+        return (
+            earth_radius_meters
+            * central_angle
+        )
 
     # ---------------------------------------------------------
     # Escritura atómica
