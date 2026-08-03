@@ -368,6 +368,24 @@ class TripManager:
                 ),
             }
 
+    def protect_segment(
+        self,
+        filename: str,
+        reason: str,
+    ) -> bool:
+        """
+        Actualiza la protección de un segmento del viaje activo.
+        """
+
+        with self._lock:
+            if self._active_trip is None:
+                return False
+
+            return self._active_trip.protect_segment(
+                filename,
+                reason,
+            )
+
     def close_trip(
         self,
     ) -> Optional[dict[str, Any]]:

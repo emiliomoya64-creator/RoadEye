@@ -189,6 +189,22 @@ class TripSession:
                     False,
                 )
             ),
+            "protection_reasons": (
+                list(
+                    metadata.get(
+                        "protection_reasons",
+                        [],
+                    )
+                )
+                if isinstance(
+                    metadata.get(
+                        "protection_reasons",
+                        [],
+                    ),
+                    list,
+                )
+                else []
+            ),
             "speed": {
                 "max": round(
                     maximum_speed,
@@ -238,6 +254,57 @@ class TripSession:
         )
 
         self.save()
+
+    def protect_segment(
+        self,
+        filename: str,
+        reason: str,
+    ) -> bool:
+        """
+        Protege un segmento ya incorporado al viaje.
+        """
+
+        normalized_filename = str(
+            filename
+        ).strip()
+
+        normalized_reason = str(
+            reason
+        ).strip().lower() or "event"
+
+        for segment in self.segments:
+            if segment.get(
+                "filename"
+            ) != normalized_filename:
+                continue
+
+            segment["protected"] = True
+
+            reasons = segment.get(
+                "protection_reasons",
+                [],
+            )
+
+            if not isinstance(
+                reasons,
+                list,
+            ):
+                reasons = []
+
+            if normalized_reason not in reasons:
+                reasons.append(
+                    normalized_reason
+                )
+
+            segment[
+                "protection_reasons"
+            ] = reasons
+
+            self.save()
+
+            return True
+
+        return False
 
     # ---------------------------------------------------------
     # Ruta

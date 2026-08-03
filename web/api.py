@@ -951,6 +951,24 @@ async def video_delete(
         filename
     )
 
+    metadata = _load_video_metadata(
+        path
+    )
+
+    if bool(
+        metadata.get(
+            "protected",
+            False,
+        )
+    ):
+        raise HTTPException(
+            status_code=423,
+            detail=(
+                "Este vídeo está protegido. "
+                "Debes quitar la protección antes de borrarlo."
+            ),
+        )
+
     current_file = None
 
     if recorder is not None:
@@ -1608,6 +1626,35 @@ async def create_trip_event(
                 str(current_file)
             ).name
 
+    event_protected = bool(
+        payload.get(
+            "protected",
+            event_type in {
+                "impact",
+                "parking",
+            },
+        )
+    )
+
+    protection_context = {
+        "previous": False,
+        "current": False,
+        "next_count": 0,
+        "reason": event_type,
+    }
+
+    if (
+        event_protected
+        and recorder is not None
+    ):
+        protection_context = (
+            recorder.protect_event_context(
+                reason=event_type,
+                protect_previous=True,
+                protect_next=1,
+            )
+        )
+
     result = trip_manager.add_event(
         event_type=event_type,
         label=str(
@@ -1628,15 +1675,7 @@ async def create_trip_event(
                 defaults["severity"],
             )
         ),
-        protected=bool(
-            payload.get(
-                "protected",
-                event_type in {
-                    "impact",
-                    "parking",
-                },
-            )
-        ),
+        protected=event_protected,
         segment=current_file,
         segment_time=segment_time,
         latitude=system_state.get(
@@ -1657,6 +1696,13 @@ async def create_trip_event(
     return {
         "ok": True,
         "message": "Evento registrado.",
+        "segment_protected": bool(
+            protection_context.get(
+                "current",
+                False,
+            )
+        ),
+        "protection_context": protection_context,
         **result,
     }
 
@@ -2019,3 +2065,68 @@ async def photo_file(
             )
         },
     )
+
+
+@router.put(
+    "/api/videos/{filename}/protection"
+)
+async def video_protection_update(
+    filename: str,
+    payload: dict,
+):
+    path = _safe_video_path(
+        filename
+    )
+
+    protected = bool(
+        payload.get(
+            "protected",
+            True,
+        )
+    )
+
+    metadata_path = path.with_suffix(
+        ".json"
+    )
+
+    metadata = _load_video_metadata(
+        path
+    )
+
+    if not metadata:
+        metadata = {
+            "version": 1,
+            "filename": path.name,
+        }
+
+    metadata["protected"] = protected
+
+    temporary_path = (
+        metadata_path.with_suffix(
+            ".json.tmp"
+        )
+    )
+
+    temporary_path.write_text(
+        json.dumps(
+            metadata,
+            indent=4,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
+
+    temporary_path.replace(
+        metadata_path
+    )
+
+    return {
+        "ok": True,
+        "name": path.name,
+        "protected": protected,
+        "message": (
+            "Vídeo protegido."
+            if protected
+            else "Protección retirada."
+        ),
+    }

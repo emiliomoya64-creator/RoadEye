@@ -61,6 +61,8 @@ class RecordingSession:
             protected
         )
 
+        self.protection_reasons: list[str] = []
+
         self.started_at = datetime.now()
         self.finished_at: Optional[
             datetime
@@ -92,6 +94,28 @@ class RecordingSession:
         self._track_interval_seconds = 1.0
 
         self._thumbnail_frame = None
+
+    def protect(
+        self,
+        reason: str,
+    ) -> None:
+        """
+        Protege el segmento y conserva el motivo.
+        """
+
+        normalized_reason = str(
+            reason
+        ).strip().lower()
+
+        if not normalized_reason:
+            normalized_reason = "event"
+
+        self.protected = True
+
+        if normalized_reason not in self.protection_reasons:
+            self.protection_reasons.append(
+                normalized_reason
+            )
 
     # ---------------------------------------------------------
     # Actualización durante la grabación
@@ -262,6 +286,9 @@ class RecordingSession:
             ),
             "protected": (
                 self.protected
+            ),
+            "protection_reasons": list(
+                self.protection_reasons
             ),
             "gps": {
                 "start": self._coordinate_pair(

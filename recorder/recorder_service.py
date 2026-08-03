@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 import subprocess
@@ -104,6 +105,13 @@ class RecorderService:
         self._current_session: Optional[
             RecordingSession
         ] = None
+
+        self._last_completed_metadata_path: Optional[
+            Path
+        ] = None
+
+        self._pending_protected_segments = 0
+        self._pending_protection_reasons: list[str] = []
 
     # ---------------------------------------------------------
     # Estado
@@ -673,6 +681,18 @@ class RecorderService:
             )
         )
 
+        if self._pending_protected_segments > 0:
+            for reason in self._pending_protection_reasons:
+                self._current_session.protect(
+                    reason
+                )
+
+            self._pending_protected_segments -= 1
+
+            if self._pending_protected_segments <= 0:
+                self._pending_protected_segments = 0
+                self._pending_protection_reasons.clear()
+
         logger.info(
             "Grabando segmento H.264: %s",
             output_path,
@@ -796,6 +816,10 @@ class RecorderService:
                     current_session.metadata_path,
                 )
 
+                self._last_completed_metadata_path = (
+                    current_session.metadata_path
+                )
+
                 logger.info(
                     "Metadatos guardados: "
                     "duración=%.2fs, "
@@ -823,6 +847,193 @@ class RecorderService:
             - self._segment_start
             >= self.segment_seconds
         )
+
+    def protect_current_segment(
+        self,
+        *,
+        reason: str = "event",
+    ) -> bool:
+        """
+        Mantiene compatibilidad con la protección simple.
+        """
+
+        result = self.protect_event_context(
+            reason=reason,
+            protect_previous=False,
+            protect_next=0,
+        )
+
+        return bool(
+            result["current"]
+        )
+
+    def protect_event_context(
+        self,
+        *,
+        reason: str = "event",
+        protect_previous: bool = True,
+        protect_next: int = 1,
+    ) -> dict:
+        """
+        Protege el segmento anterior, el actual y los siguientes.
+        """
+
+        normalized_reason = str(
+            reason
+        ).strip().lower() or "event"
+
+        result = {
+            "previous": False,
+            "current": False,
+            "next_count": max(
+                0,
+                int(
+                    protect_next
+                ),
+            ),
+            "reason": normalized_reason,
+        }
+
+        with self._lock:
+            if (
+                protect_previous
+                and self._last_completed_metadata_path is not None
+            ):
+                result["previous"] = (
+                    self._protect_completed_segment_locked(
+                        self._last_completed_metadata_path,
+                        normalized_reason,
+                    )
+                )
+
+            if self._current_session is not None:
+                self._current_session.protect(
+                    normalized_reason
+                )
+
+                result["current"] = True
+
+            requested_next = max(
+                0,
+                int(
+                    protect_next
+                ),
+            )
+
+            self._pending_protected_segments = max(
+                self._pending_protected_segments,
+                requested_next,
+            )
+
+            if (
+                requested_next > 0
+                and normalized_reason
+                not in self._pending_protection_reasons
+            ):
+                self._pending_protection_reasons.append(
+                    normalized_reason
+                )
+
+            logger.info(
+                "Contexto protegido: anterior=%s, "
+                "actual=%s, siguientes=%d, motivo=%s",
+                result["previous"],
+                result["current"],
+                requested_next,
+                normalized_reason,
+            )
+
+        return result
+
+    def _protect_completed_segment_locked(
+        self,
+        metadata_path: Path,
+        reason: str,
+    ) -> bool:
+        """
+        Protege un JSON de segmento que ya se cerró.
+        """
+
+        try:
+            metadata = json.loads(
+                metadata_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            if not isinstance(
+                metadata,
+                dict,
+            ):
+                return False
+
+            metadata["protected"] = True
+
+            reasons = metadata.get(
+                "protection_reasons",
+                [],
+            )
+
+            if not isinstance(
+                reasons,
+                list,
+            ):
+                reasons = []
+
+            if reason not in reasons:
+                reasons.append(
+                    reason
+                )
+
+            metadata[
+                "protection_reasons"
+            ] = reasons
+
+            temporary_path = (
+                metadata_path.with_suffix(
+                    ".json.protection.tmp"
+                )
+            )
+
+            temporary_path.write_text(
+                json.dumps(
+                    metadata,
+                    indent=4,
+                    ensure_ascii=False,
+                ) + "\n",
+                encoding="utf-8",
+            )
+
+            temporary_path.replace(
+                metadata_path
+            )
+
+            filename = str(
+                metadata.get(
+                    "filename",
+                    "",
+                )
+            )
+
+            if filename:
+                trip_manager.protect_segment(
+                    filename,
+                    reason,
+                )
+
+            return True
+
+        except (
+            OSError,
+            json.JSONDecodeError,
+        ):
+            logger.exception(
+                "No se pudo proteger el segmento anterior: %s",
+                metadata_path,
+            )
+
+            return False
+
 
     # ---------------------------------------------------------
     # Información pública
