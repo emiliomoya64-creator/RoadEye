@@ -406,7 +406,26 @@ class PopupManager {
                                         id="mapTabPanel"
                                         class="media-tab-panel hidden"
                                     >
-                                        <div id="routeMap"></div>
+                                        <div class="route-map-wrap">
+                                            <div id="routeMap"></div>
+
+                                            <div
+                                                id="routeSyncStatus"
+                                                class="route-sync-status hidden"
+                                            >
+                                                <span class="route-sync-dot"></span>
+
+                                                <span>
+                                                    <strong id="routeSyncTime">
+                                                        00:00
+                                                    </strong>
+
+                                                    <small id="routeSyncSpeed">
+                                                        0 km/h
+                                                    </small>
+                                                </span>
+                                            </div>
+                                        </div>
 
                                         <div
                                             id="routeEmpty"
@@ -966,6 +985,10 @@ function selectVideo(
 
     player.src = video.stream_url;
 
+    initializeVideoMapSynchronization(
+        player
+    );
+
     document.getElementById(
         "videoPlayerName"
     ).textContent = video.name;
@@ -1214,8 +1237,11 @@ function escapeHtml(value) {
 
 let routeMap = null;
 let routeLayer = null;
+let routeProgressLayer = null;
 let routeStartMarker = null;
 let routeEndMarker = null;
+let routeVehicleMarker = null;
+let routeSyncTrack = [];
 
 
 function initializeMediaTabs() {
@@ -1290,6 +1316,16 @@ function showMediaTab(name) {
                 if (routeMap) {
                     routeMap.invalidateSize();
                 }
+
+                const player = document.getElementById(
+                    "videoPlayer"
+                );
+
+                updateVideoMapPosition(
+                    player
+                    ? Number(player.currentTime) || 0
+                    : 0
+                );
             },
             80
         );
@@ -1306,6 +1342,10 @@ function renderSelectedVideoRoute() {
         "routeEmpty"
     );
 
+    const syncStatus = document.getElementById(
+        "routeSyncStatus"
+    );
+
     if (!mapElement || !emptyElement) {
         return;
     }
@@ -1319,8 +1359,16 @@ function renderSelectedVideoRoute() {
         return (
             Number.isFinite(Number(point.lat))
             && Number.isFinite(Number(point.lon))
+            && Number.isFinite(Number(point.time))
+        );
+    }).sort((first, second) => {
+        return (
+            Number(first.time)
+            - Number(second.time)
         );
     });
+
+    routeSyncTrack = track;
 
     if (!track.length) {
         mapElement.classList.add(
@@ -1330,6 +1378,12 @@ function renderSelectedVideoRoute() {
         emptyElement.classList.remove(
             "hidden"
         );
+
+        if (syncStatus) {
+            syncStatus.classList.add(
+                "hidden"
+            );
+        }
 
         return;
     }
@@ -1358,6 +1412,12 @@ function renderSelectedVideoRoute() {
         "hidden"
     );
 
+    if (syncStatus) {
+        syncStatus.classList.remove(
+            "hidden"
+        );
+    }
+
     if (!routeMap) {
         routeMap = L.map(
             mapElement,
@@ -1379,23 +1439,28 @@ function renderSelectedVideoRoute() {
         );
     }
 
-    if (routeLayer) {
-        routeMap.removeLayer(
-            routeLayer
-        );
+    for (
+        const layer
+        of [
+            routeLayer,
+            routeProgressLayer,
+            routeStartMarker,
+            routeEndMarker,
+            routeVehicleMarker
+        ]
+    ) {
+        if (layer) {
+            routeMap.removeLayer(
+                layer
+            );
+        }
     }
 
-    if (routeStartMarker) {
-        routeMap.removeLayer(
-            routeStartMarker
-        );
-    }
-
-    if (routeEndMarker) {
-        routeMap.removeLayer(
-            routeEndMarker
-        );
-    }
+    routeLayer = null;
+    routeProgressLayer = null;
+    routeStartMarker = null;
+    routeEndMarker = null;
+    routeVehicleMarker = null;
 
     const coordinates = track.map(
         (point) => [
@@ -1407,8 +1472,24 @@ function renderSelectedVideoRoute() {
     routeLayer = L.polyline(
         coordinates,
         {
-            weight: 5,
-            opacity: 0.9
+            weight: 6,
+            opacity: 0.45,
+            lineCap: "round",
+            lineJoin: "round"
+        }
+    ).addTo(
+        routeMap
+    );
+
+    routeProgressLayer = L.polyline(
+        [
+            coordinates[0]
+        ],
+        {
+            weight: 6,
+            opacity: 0.95,
+            lineCap: "round",
+            lineJoin: "round"
         }
     ).addTo(
         routeMap
@@ -1441,6 +1522,47 @@ function renderSelectedVideoRoute() {
             `Final · ${formatTrackTime(last.time)}`
         );
 
+    const vehicleIcon = L.divIcon(
+        {
+            className: "roadeye-vehicle-marker-wrap",
+            html: `
+                <span class="roadeye-vehicle-marker">
+                    ●
+                </span>
+            `,
+            iconSize: [
+                32,
+                32
+            ],
+            iconAnchor: [
+                16,
+                16
+            ],
+            tooltipAnchor: [
+                0,
+                -18
+            ]
+        }
+    );
+
+    routeVehicleMarker = L.marker(
+        coordinates[0],
+        {
+            icon: vehicleIcon,
+            zIndexOffset: 1000
+        }
+    ).addTo(
+        routeMap
+    );
+
+    routeVehicleMarker.bindTooltip(
+        "Posición actual",
+        {
+            direction: "top",
+            offset: [0, -18]
+        }
+    );
+
     if (coordinates.length === 1) {
         routeMap.setView(
             coordinates[0],
@@ -1454,6 +1576,16 @@ function renderSelectedVideoRoute() {
             }
         );
     }
+
+    const player = document.getElementById(
+        "videoPlayer"
+    );
+
+    updateVideoMapPosition(
+        player
+        ? Number(player.currentTime) || 0
+        : 0
+    );
 }
 
 
@@ -2891,4 +3023,288 @@ function formatTimelineDuration(value) {
         + ":"
         + String(seconds).padStart(2, "0")
     );
+}
+
+
+// ============================================================
+// Sincronización vídeo y mapa
+// ============================================================
+
+function initializeVideoMapSynchronization(
+    player
+) {
+    if (!player) {
+        return;
+    }
+
+    if (
+        player._roadEyeMapSyncHandler
+    ) {
+        player.removeEventListener(
+            "timeupdate",
+            player._roadEyeMapSyncHandler
+        );
+
+        player.removeEventListener(
+            "seeked",
+            player._roadEyeMapSyncHandler
+        );
+    }
+
+    const handler = () => {
+        updateVideoMapPosition(
+            Number(
+                player.currentTime
+            ) || 0
+        );
+    };
+
+    player._roadEyeMapSyncHandler = (
+        handler
+    );
+
+    player.addEventListener(
+        "timeupdate",
+        handler
+    );
+
+    player.addEventListener(
+        "seeked",
+        handler
+    );
+
+    player.addEventListener(
+        "loadedmetadata",
+        handler
+    );
+}
+
+
+function updateVideoMapPosition(
+    videoTime
+) {
+    if (
+        !routeMap
+        || !routeVehicleMarker
+        || !routeProgressLayer
+        || !routeSyncTrack.length
+    ) {
+        return;
+    }
+
+    const currentTime = Math.max(
+        0,
+        Number(videoTime) || 0
+    );
+
+    const position = interpolateTrackPosition(
+        routeSyncTrack,
+        currentTime
+    );
+
+    if (!position) {
+        return;
+    }
+
+    const coordinate = [
+        position.lat,
+        position.lon
+    ];
+
+    routeVehicleMarker.setLatLng(
+        coordinate
+    );
+
+    routeVehicleMarker.setTooltipContent(
+        `${formatTrackTime(currentTime)}`
+        + ` · ${position.speed.toFixed(1)} km/h`
+    );
+
+    const progressCoordinates = (
+        routeSyncTrack
+        .filter((point) => {
+            return (
+                Number(point.time)
+                <= currentTime
+            );
+        })
+        .map((point) => [
+            Number(point.lat),
+            Number(point.lon)
+        ])
+    );
+
+    if (!progressCoordinates.length) {
+        progressCoordinates.push(
+            coordinate
+        );
+    } else {
+        progressCoordinates.push(
+            coordinate
+        );
+    }
+
+    routeProgressLayer.setLatLngs(
+        progressCoordinates
+    );
+
+    const timeElement = document.getElementById(
+        "routeSyncTime"
+    );
+
+    const speedElement = document.getElementById(
+        "routeSyncSpeed"
+    );
+
+    if (timeElement) {
+        timeElement.textContent = (
+            formatTrackTime(
+                currentTime
+            )
+        );
+    }
+
+    if (speedElement) {
+        speedElement.textContent = (
+            `${position.speed.toFixed(1)} km/h`
+        );
+    }
+}
+
+
+function interpolateTrackPosition(
+    track,
+    currentTime
+) {
+    if (!track.length) {
+        return null;
+    }
+
+    if (
+        currentTime
+        <= Number(track[0].time)
+    ) {
+        return normalizedTrackPoint(
+            track[0]
+        );
+    }
+
+    const last = track[
+        track.length - 1
+    ];
+
+    if (
+        currentTime
+        >= Number(last.time)
+    ) {
+        return normalizedTrackPoint(
+            last
+        );
+    }
+
+    let low = 0;
+    let high = track.length - 1;
+
+    while (
+        low <= high
+    ) {
+        const middle = Math.floor(
+            (low + high) / 2
+        );
+
+        const middleTime = Number(
+            track[middle].time
+        );
+
+        if (middleTime < currentTime) {
+            low = middle + 1;
+        } else {
+            high = middle - 1;
+        }
+    }
+
+    const nextIndex = Math.min(
+        track.length - 1,
+        low
+    );
+
+    const previousIndex = Math.max(
+        0,
+        nextIndex - 1
+    );
+
+    const previous = normalizedTrackPoint(
+        track[previousIndex]
+    );
+
+    const next = normalizedTrackPoint(
+        track[nextIndex]
+    );
+
+    const interval = Math.max(
+        0.001,
+        next.time - previous.time
+    );
+
+    const progress = Math.max(
+        0,
+        Math.min(
+            1,
+            (
+                currentTime
+                - previous.time
+            ) / interval
+        )
+    );
+
+    return {
+        time: currentTime,
+        lat: (
+            previous.lat
+            + (
+                next.lat
+                - previous.lat
+            ) * progress
+        ),
+        lon: (
+            previous.lon
+            + (
+                next.lon
+                - previous.lon
+            ) * progress
+        ),
+        speed: (
+            previous.speed
+            + (
+                next.speed
+                - previous.speed
+            ) * progress
+        )
+    };
+}
+
+
+function normalizedTrackPoint(
+    point
+) {
+    return {
+        time: Number(
+            point.time
+        ) || 0,
+
+        lat: Number(
+            point.lat
+        ),
+
+        lon: Number(
+            point.lon
+        ),
+
+        speed: Math.max(
+            0,
+            Number(
+                point.speed
+            ) || 0
+        )
+    };
 }

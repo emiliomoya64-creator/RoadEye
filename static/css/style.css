@@ -1834,3 +1834,109 @@ button {
         font-size: 0.58rem;
     }
 }
+
+
+/* ==========================================================
+   SINCRONIZACIÓN VÍDEO Y MAPA
+   ========================================================== */
+
+.route-map-wrap {
+    position: relative;
+}
+
+.route-sync-status {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 500;
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    min-width: 116px;
+    padding: 9px 12px;
+
+    color: white;
+
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 11px;
+
+    background: rgba(7, 11, 13, 0.88);
+
+    box-shadow:
+        0 6px 20px rgba(0, 0, 0, 0.35);
+
+    backdrop-filter: blur(8px);
+
+    pointer-events: none;
+}
+
+.route-sync-status > span:last-child {
+    display: flex;
+    flex-direction: column;
+}
+
+.route-sync-status strong {
+    font-size: 0.83rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.route-sync-status small {
+    margin-top: 2px;
+
+    color: var(--muted);
+    font-size: 0.68rem;
+}
+
+.route-sync-dot {
+    width: 11px;
+    height: 11px;
+
+    flex: 0 0 auto;
+
+    border: 3px solid white;
+    border-radius: 50%;
+
+    background: var(--accent);
+
+    box-shadow:
+        0 0 0 4px rgba(53, 200, 120, 0.24);
+}
+
+@media (max-width: 620px) {
+    .route-sync-status {
+        top: 9px;
+        right: 9px;
+
+        min-width: 105px;
+        padding: 7px 9px;
+    }
+}
+
+
+.roadeye-vehicle-marker-wrap {
+    border: 0;
+    background: transparent;
+}
+
+.roadeye-vehicle-marker {
+    display: grid;
+    place-items: center;
+
+    width: 32px;
+    height: 32px;
+
+    color: white;
+    font-size: 15px;
+    line-height: 1;
+
+    border: 4px solid white;
+    border-radius: 50%;
+
+    background: #35c878;
+
+    box-shadow:
+        0 0 0 5px rgba(53, 200, 120, 0.30),
+        0 5px 16px rgba(0, 0, 0, 0.65);
+}
