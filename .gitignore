@@ -39,3 +39,4 @@ photos/
 *.timeline-backup
 *.map-sync-backup
 *.trip-cards-premium-backup
+*.trip-header-premium-backup

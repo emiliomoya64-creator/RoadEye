@@ -2236,118 +2236,363 @@ function renderTripDetails(trip) {
         events
     );
 
+    const tripVisual = tripVisualState(
+        trip
+    );
+
+    const photoEvents = events.filter(
+        event => event.type === "photo"
+    );
+
+    const protectedSegments = (
+        Array.isArray(trip.segments)
+        ? trip.segments.filter(
+            segment => Boolean(
+                segment.protected
+            )
+        )
+        : []
+    );
+
+    const tripIsProtected = (
+        protectedSegments.length > 0
+        || events.some(
+            event => Boolean(
+                event.protected
+            )
+        )
+    );
+
+    const heroThumbnail = (
+        Array.isArray(trip.segments)
+        && trip.segments.length
+        && trip.segments[0].filename
+        ? (
+            "/api/videos/thumbnail/"
+            + encodeURIComponent(
+                trip.segments[0].filename
+            )
+        )
+        : null
+    );
+
     details.innerHTML = `
         <div class="trip-details-content">
-            <div class="trip-summary-grid">
-                <div>
-                    <span>Inicio</span>
-                    <strong>
-                        ${escapeHtml(trip.date)}
-                        ·
-                        ${escapeHtml(trip.time)}
-                    </strong>
+            <section
+                class="
+                    trip-premium-hero
+                    trip-hero-${tripVisual.state}
+                "
+            >
+                <div class="trip-hero-media">
+                    ${
+                        heroThumbnail
+                        ? `
+                            <img
+                                src="${escapeHtml(heroThumbnail)}"
+                                alt=""
+                                class="trip-hero-image"
+                                onerror="
+                                    this.classList.add('hidden');
+                                    this.nextElementSibling.classList.remove('hidden');
+                                "
+                            >
+
+                            <div class="trip-hero-fallback hidden">
+                                ${tripVisual.icon}
+                            </div>
+                        `
+                        : `
+                            <div class="trip-hero-fallback">
+                                ${tripVisual.icon}
+                            </div>
+                        `
+                    }
+
+                    <div class="trip-hero-overlay"></div>
+
+                    <div class="trip-hero-topline">
+                        <span
+                            class="
+                                trip-hero-type
+                                hero-type-${tripVisual.state}
+                            "
+                        >
+                            <span>${tripVisual.icon}</span>
+                            ${escapeHtml(tripVisual.label)}
+                        </span>
+
+                        ${
+                            tripIsProtected
+                            ? `
+                                <span class="trip-hero-protected">
+                                    🛡 Protegido
+                                </span>
+                            `
+                            : ""
+                        }
+                    </div>
+
+                    <div class="trip-hero-title">
+                        <span>Trayecto RoadEye</span>
+
+                        <strong>
+                            ${escapeHtml(
+                                premiumTripDate(
+                                    trip.started,
+                                    trip.date
+                                )
+                            )}
+                        </strong>
+
+                        <small>
+                            ${escapeHtml(trip.time)}
+                            ·
+                            ${escapeHtml(trip.duration)}
+                        </small>
+                    </div>
                 </div>
 
-                <div>
-                    <span>Duración</span>
-                    <strong>${escapeHtml(trip.duration)}</strong>
+                <div class="trip-hero-body">
+                    <div class="trip-hero-kpis">
+                        <div class="hero-kpi primary">
+                            <span class="hero-kpi-icon">⌁</span>
+
+                            <span>
+                                <small>Distancia</small>
+
+                                <strong>
+                                    ${formatDistance(
+                                        trip.distance?.kilometers || 0
+                                    )}
+                                </strong>
+                            </span>
+                        </div>
+
+                        <div class="hero-kpi">
+                            <span class="hero-kpi-icon">↑</span>
+
+                            <span>
+                                <small>Velocidad máxima</small>
+
+                                <strong>
+                                    ${Number(
+                                        trip.speed?.max || 0
+                                    ).toFixed(1)}
+                                    km/h
+                                </strong>
+                            </span>
+                        </div>
+
+                        <div class="hero-kpi">
+                            <span class="hero-kpi-icon">▶</span>
+
+                            <span>
+                                <small>En movimiento</small>
+
+                                <strong>
+                                    ${formatLongDuration(
+                                        trip.motion?.moving_seconds || 0
+                                    )}
+                                </strong>
+                            </span>
+                        </div>
+
+                        <div class="hero-kpi">
+                            <span class="hero-kpi-icon">Ⅱ</span>
+
+                            <span>
+                                <small>Tiempo parado</small>
+
+                                <strong>
+                                    ${formatLongDuration(
+                                        trip.motion?.stopped_seconds || 0
+                                    )}
+                                </strong>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="trip-hero-counters">
+                        <span>
+                            <strong>
+                                ${Number(
+                                    trip.segment_count || 0
+                                )}
+                            </strong>
+
+                            <small>Vídeos</small>
+                        </span>
+
+                        <span>
+                            <strong>
+                                ${photoEvents.length}
+                            </strong>
+
+                            <small>Fotografías</small>
+                        </span>
+
+                        <span>
+                            <strong>
+                                ${Number(
+                                    trip.event_count
+                                    || events.length
+                                    || 0
+                                )}
+                            </strong>
+
+                            <small>Eventos</small>
+                        </span>
+
+                        <span>
+                            <strong>
+                                ${protectedSegments.length}
+                            </strong>
+
+                            <small>Protegidos</small>
+                        </span>
+
+                        <span>
+                            <strong>
+                                ${Number(
+                                    trip.route_points || 0
+                                )}
+                            </strong>
+
+                            <small>Puntos GPS</small>
+                        </span>
+                    </div>
+
+                    <nav
+                        class="trip-hero-navigation"
+                        aria-label="Secciones del viaje"
+                    >
+                        <button
+                            class="trip-hero-nav-button"
+                            type="button"
+                            data-trip-section="tripTimelineSection"
+                        >
+                            <span>⌁</span>
+                            Timeline
+                        </button>
+
+                        <button
+                            class="trip-hero-nav-button"
+                            type="button"
+                            data-trip-section="tripMapSection"
+                        >
+                            <span>⌖</span>
+                            Mapa
+                        </button>
+
+                        <button
+                            class="trip-hero-nav-button"
+                            type="button"
+                            data-trip-section="tripEventsSection"
+                        >
+                            <span>⚠</span>
+                            Eventos
+                        </button>
+
+                        <button
+                            class="trip-hero-nav-button"
+                            type="button"
+                            data-trip-section="tripVideosSection"
+                        >
+                            <span>▶</span>
+                            Vídeos
+                        </button>
+                    </nav>
                 </div>
+            </section>
 
-                <div>
-                    <span>Segmentos</span>
-                    <strong>${trip.segment_count}</strong>
-                </div>
+            <section
+                id="tripTimelineSection"
+                class="trip-premium-section"
+            >
+                <h3>Línea temporal del viaje</h3>
 
-                <div>
-                    <span>Velocidad máxima</span>
-                    <strong>${trip.speed.max} km/h</strong>
-                </div>
+                ${timelineHtml}
+            </section>
 
-                <div>
-                    <span>Velocidad media</span>
-                    <strong>${trip.speed.average} km/h</strong>
-                </div>
-
-                <div>
-                    <span>Distancia</span>
-                    <strong>
-                        ${formatDistance(
-                            trip.distance.kilometers
-                        )}
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Tiempo en movimiento</span>
-                    <strong>
-                        ${formatLongDuration(
-                            trip.motion.moving_seconds
-                        )}
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Tiempo parado</span>
-                    <strong>
-                        ${formatLongDuration(
-                            trip.motion.stopped_seconds
-                        )}
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Media en movimiento</span>
-                    <strong>
-                        ${trip.speed.average_moving} km/h
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Porcentaje en marcha</span>
-                    <strong>
-                        ${trip.motion.moving_percent} %
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Puntos GPS</span>
-                    <strong>${trip.route_points}</strong>
-                </div>
-            </div>
-
-            <h3>Línea temporal del viaje</h3>
-
-            ${timelineHtml}
-
-            <h3>Ruta completa</h3>
+            <section
+                id="tripMapSection"
+                class="trip-premium-section"
+            >
+                <h3>Ruta completa</h3>
 
             <div id="tripMap"></div>
 
-            <div
-                id="tripRouteEmpty"
-                class="route-empty hidden"
-            >
-                Este viaje no contiene una ruta GPS.
-            </div>
+                <div
+                    id="tripRouteEmpty"
+                    class="route-empty hidden"
+                >
+                    Este viaje no contiene una ruta GPS.
+                </div>
+            </section>
 
-            <h3>
-                Eventos del viaje
+            <section
+                id="tripEventsSection"
+                class="trip-premium-section"
+            >
+                <h3>
+                    Eventos del viaje
                 <span class="section-count">
                     ${trip.event_count || events.length}
                 </span>
             </h3>
 
-            <div class="trip-events">
-                ${eventsHtml}
-            </div>
+                <div class="trip-events">
+                    ${eventsHtml}
+                </div>
+            </section>
 
-            <h3>Vídeos del viaje</h3>
+            <section
+                id="tripVideosSection"
+                class="trip-premium-section"
+            >
+                <h3>Vídeos del viaje</h3>
 
-            <div class="trip-segments">
-                ${segments}
-            </div>
+                <div class="trip-segments">
+                    ${segments}
+                </div>
+            </section>
         </div>
     `;
+
+    document.querySelectorAll(
+        ".trip-hero-nav-button"
+    ).forEach((button) => {
+        button.onclick = () => {
+            const target = document.getElementById(
+                button.dataset.tripSection
+            );
+
+            if (!target) {
+                return;
+            }
+
+            target.scrollIntoView(
+                {
+                    behavior: "smooth",
+                    block: "start"
+                }
+            );
+
+            target.classList.add(
+                "section-highlight"
+            );
+
+            window.setTimeout(
+                () => {
+                    target.classList.remove(
+                        "section-highlight"
+                    );
+                },
+                900
+            );
+        };
+    });
 
     document.querySelectorAll(
         ".timeline-event"

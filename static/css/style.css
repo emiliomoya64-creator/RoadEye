@@ -2367,3 +2367,503 @@ button {
         padding: 15px;
     }
 }
+
+
+/* ==========================================================
+   DARK PREMIUM · CABECERA DEL VIAJE
+   ========================================================== */
+
+.trip-details-content {
+    padding: 20px;
+
+    background:
+        radial-gradient(
+            circle at 80% 0%,
+            rgba(38, 91, 120, 0.11),
+            transparent 34%
+        ),
+        #070a0c;
+}
+
+.trip-premium-hero {
+    position: relative;
+
+    overflow: hidden;
+
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 22px;
+
+    background:
+        linear-gradient(
+            150deg,
+            rgba(27, 38, 43, 0.98),
+            rgba(12, 17, 20, 0.99)
+        );
+
+    box-shadow:
+        0 22px 54px rgba(0, 0, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.trip-premium-hero::before {
+    content: "";
+
+    position: absolute;
+    inset: 0 0 auto;
+
+    z-index: 4;
+
+    height: 4px;
+
+    background:
+        linear-gradient(
+            90deg,
+            #35c878,
+            #47a7db
+        );
+}
+
+.trip-hero-warning::before {
+    background:
+        linear-gradient(
+            90deg,
+            #d4a02e,
+            #f0c65d
+        );
+}
+
+.trip-hero-event::before {
+    background:
+        linear-gradient(
+            90deg,
+            #d48032,
+            #e9a55e
+        );
+}
+
+.trip-hero-impact::before {
+    background:
+        linear-gradient(
+            90deg,
+            #e14d4d,
+            #ff8585
+        );
+}
+
+.trip-hero-parking::before {
+    background:
+        linear-gradient(
+            90deg,
+            #348fd1,
+            #85c9ff
+        );
+}
+
+.trip-hero-media {
+    position: relative;
+
+    min-height: 250px;
+    overflow: hidden;
+
+    background:
+        linear-gradient(
+            135deg,
+            #15242b,
+            #080d10
+        );
+}
+
+.trip-hero-image,
+.trip-hero-fallback {
+    width: 100%;
+    height: 100%;
+    min-height: 250px;
+}
+
+.trip-hero-image {
+    display: block;
+    object-fit: cover;
+}
+
+.trip-hero-fallback {
+    display: grid;
+    place-items: center;
+
+    color: rgba(255, 255, 255, 0.22);
+    font-size: 5rem;
+    font-weight: 900;
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(53, 200, 120, 0.17),
+            transparent 55%
+        );
+}
+
+.trip-hero-overlay {
+    position: absolute;
+    inset: 0;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(3, 5, 6, 0.22),
+            rgba(3, 5, 6, 0.30) 38%,
+            rgba(5, 8, 10, 0.96) 100%
+        );
+}
+
+.trip-hero-topline {
+    position: absolute;
+    inset: 18px 20px auto;
+
+    z-index: 2;
+
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.trip-hero-type,
+.trip-hero-protected {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    min-height: 32px;
+    padding: 0 12px;
+
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 850;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+
+    border: 1px solid rgba(255, 255, 255, 0.17);
+    border-radius: 999px;
+
+    background: rgba(5, 8, 10, 0.76);
+
+    backdrop-filter: blur(10px);
+}
+
+.hero-type-normal {
+    color: #79e5aa;
+}
+
+.hero-type-warning {
+    color: #ffd36b;
+}
+
+.hero-type-event {
+    color: #ffb165;
+}
+
+.hero-type-impact {
+    color: #ff8585;
+}
+
+.hero-type-parking {
+    color: #85c9ff;
+}
+
+.trip-hero-protected {
+    color: #ffd36b;
+}
+
+.trip-hero-title {
+    position: absolute;
+    right: 22px;
+    bottom: 22px;
+    left: 22px;
+
+    z-index: 2;
+}
+
+.trip-hero-title > span,
+.trip-hero-title strong,
+.trip-hero-title small {
+    display: block;
+}
+
+.trip-hero-title > span {
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.trip-hero-title strong {
+    margin-top: 7px;
+
+    color: #f5f9fa;
+    font-size: clamp(1.45rem, 3vw, 2.15rem);
+    font-weight: 820;
+    text-transform: capitalize;
+}
+
+.trip-hero-title small {
+    margin-top: 7px;
+
+    color: #b4c0c5;
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.trip-hero-body {
+    padding: 19px;
+}
+
+.trip-hero-kpis {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            4,
+            minmax(0, 1fr)
+        );
+
+    gap: 10px;
+}
+
+.hero-kpi {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+    min-width: 0;
+    min-height: 72px;
+    padding: 12px;
+
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.04),
+            rgba(255, 255, 255, 0.018)
+        );
+}
+
+.hero-kpi.primary {
+    border-color: rgba(53, 200, 120, 0.17);
+    background: rgba(53, 200, 120, 0.065);
+}
+
+.hero-kpi-icon {
+    display: grid;
+    place-items: center;
+
+    width: 37px;
+    height: 37px;
+
+    flex: 0 0 auto;
+
+    color: var(--accent);
+    font-size: 1rem;
+    font-weight: 900;
+
+    border-radius: 11px;
+
+    background: rgba(53, 200, 120, 0.10);
+}
+
+.hero-kpi > span:last-child {
+    min-width: 0;
+}
+
+.hero-kpi small,
+.hero-kpi strong {
+    display: block;
+}
+
+.hero-kpi small {
+    color: var(--muted);
+    font-size: 0.62rem;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+.hero-kpi strong {
+    margin-top: 5px;
+
+    overflow: hidden;
+
+    color: #eef4f6;
+    font-size: 0.86rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trip-hero-counters {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            5,
+            minmax(0, 1fr)
+        );
+
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.trip-hero-counters > span {
+    display: block;
+    padding: 11px 8px;
+
+    text-align: center;
+
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 11px;
+
+    background: rgba(255, 255, 255, 0.022);
+}
+
+.trip-hero-counters strong,
+.trip-hero-counters small {
+    display: block;
+}
+
+.trip-hero-counters strong {
+    color: #eef4f6;
+    font-size: 1rem;
+}
+
+.trip-hero-counters small {
+    margin-top: 4px;
+
+    color: var(--muted);
+    font-size: 0.62rem;
+}
+
+.trip-hero-navigation {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            4,
+            minmax(0, 1fr)
+        );
+
+    gap: 9px;
+    margin-top: 13px;
+}
+
+.trip-hero-nav-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    min-height: 43px;
+    padding: 0 10px;
+
+    color: #c6d0d4;
+    font: inherit;
+    font-size: 0.73rem;
+    font-weight: 760;
+
+    border: 1px solid rgba(255, 255, 255, 0.075);
+    border-radius: 11px;
+
+    background: rgba(255, 255, 255, 0.027);
+    cursor: pointer;
+
+    transition:
+        color 140ms ease,
+        border-color 140ms ease,
+        background 140ms ease,
+        transform 140ms ease;
+}
+
+.trip-hero-nav-button span {
+    color: var(--accent);
+    font-size: 0.95rem;
+}
+
+.trip-hero-nav-button:hover {
+    color: white;
+    border-color: rgba(53, 200, 120, 0.30);
+    background: rgba(53, 200, 120, 0.09);
+    transform: translateY(-1px);
+}
+
+.trip-premium-section {
+    scroll-margin-top: 18px;
+
+    margin-top: 22px;
+    padding: 17px;
+
+    border: 1px solid rgba(255, 255, 255, 0.065);
+    border-radius: 17px;
+
+    background:
+        linear-gradient(
+            150deg,
+            rgba(20, 28, 32, 0.88),
+            rgba(11, 16, 19, 0.90)
+        );
+
+    transition:
+        border-color 220ms ease,
+        box-shadow 220ms ease;
+}
+
+.trip-premium-section > h3 {
+    margin: 0 0 14px;
+}
+
+.trip-premium-section.section-highlight {
+    border-color: rgba(53, 200, 120, 0.55);
+
+    box-shadow:
+        0 0 0 3px rgba(53, 200, 120, 0.10),
+        0 12px 35px rgba(0, 0, 0, 0.30);
+}
+
+@media (max-width: 1050px) {
+    .trip-hero-kpis {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+@media (max-width: 700px) {
+    .trip-details-content {
+        padding: 11px;
+    }
+
+    .trip-hero-media,
+    .trip-hero-image,
+    .trip-hero-fallback {
+        min-height: 220px;
+    }
+
+    .trip-hero-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .trip-hero-counters {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .trip-hero-navigation {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .trip-premium-section {
+        padding: 12px;
+    }
+}
