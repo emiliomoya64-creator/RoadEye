@@ -1,0 +1,109 @@
+class Layout:
+    """
+    Medidas adaptativas del HUD RoadEye 0.6.
+
+    El diseño utiliza dos filas superiores:
+
+        Fila 1: controles y estado de conducción.
+        Fila 2: ubicación, fecha, hora y configuración.
+    """
+
+    def update(self, frame):
+        h, w = frame.shape[:2]
+
+        self.W = w
+        self.H = h
+
+        # Escala respecto a Full HD.
+        self.S = min(
+            w / 1920.0,
+            h / 1080.0,
+        )
+
+        # Altura mínima útil para pantallas 1280x720.
+        self.TOP_ROW_HEIGHT = max(
+            48,
+            int(72 * self.S),
+        )
+
+        self.INFO_ROW_HEIGHT = max(
+            42,
+            int(62 * self.S),
+        )
+
+        self.TOP_BAR = (
+            self.TOP_ROW_HEIGHT
+            + self.INFO_ROW_HEIGHT
+        )
+
+        self.TOP_ROW_Y = 0
+        self.INFO_ROW_Y = self.TOP_ROW_HEIGHT
+
+        self.HORIZONTAL_MARGIN = max(
+            12,
+            int(24 * self.S),
+        )
+
+        self.ROW_PADDING = max(
+            8,
+            int(14 * self.S),
+        )
+
+        # Posiciones heredadas para mantener compatibilidad temporal.
+        self.DATE = (
+            self.HORIZONTAL_MARGIN,
+            self.INFO_ROW_Y
+            + self.INFO_ROW_HEIGHT // 2,
+        )
+
+        self.REC = (
+            self.HORIZONTAL_MARGIN
+            + int(16 * self.S),
+            self.TOP_ROW_HEIGHT // 2,
+        )
+
+        self.GPS = (
+            int(self.W * 0.27),
+            self.TOP_ROW_HEIGHT // 2,
+        )
+
+        self.SPEED = (
+            self.W // 2,
+            int(self.TOP_ROW_HEIGHT * 0.68),
+        )
+
+        self.SPEED_SIGN = (
+            self.W - self.HORIZONTAL_MARGIN - int(38 * self.S),
+            self.TOP_ROW_HEIGHT // 2,
+        )
+
+        # Valores conservados para no romper otros módulos antiguos.
+        self.BOTTOM_BAR = 0
+
+        self.ROAD_ICON = (
+            self.HORIZONTAL_MARGIN,
+            self.INFO_ROW_Y
+            + self.INFO_ROW_HEIGHT // 2,
+        )
+
+        self.ROAD = (
+            self.HORIZONTAL_MARGIN
+            + int(48 * self.S),
+            self.INFO_ROW_Y
+            + int(self.INFO_ROW_HEIGHT * 0.48),
+        )
+
+        self.ROAD_INFO = (
+            self.ROAD[0],
+            self.INFO_ROW_Y
+            + int(self.INFO_ROW_HEIGHT * 0.78),
+        )
+
+        self.SYSTEM = (
+            self.W - int(420 * self.S),
+            self.INFO_ROW_Y
+            + int(self.INFO_ROW_HEIGHT * 0.72),
+        )
+
+
+Layout = Layout()

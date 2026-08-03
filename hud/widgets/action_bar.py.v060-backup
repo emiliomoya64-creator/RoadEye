@@ -1,0 +1,666 @@
+from __future__ import annotations
+
+import cv2
+
+from hud.hud_engine import hud
+from hud.layout import Layout
+
+
+class ActionBarWidget:
+    """
+    Primera fila del HUD RoadEye 0.6.
+
+    Elementos:
+
+    - REC.
+    - Vigilancia de aparcamiento.
+    - GPS.
+    - Velocidad.
+    - Fotografía.
+    - Explorador de vídeos.
+    - Límite de velocidad.
+
+    En esta primera fase, FOTO, VÍDEOS y PARK quedan preparados
+    visualmente. La interacción táctil se añadirá posteriormente.
+    """
+
+    COLOR_WHITE = (245, 245, 245)
+    COLOR_MUTED = (145, 155, 160)
+    COLOR_GREEN = (70, 220, 110)
+    COLOR_BLUE = (230, 170, 60)
+    COLOR_RED = (50, 60, 240)
+    COLOR_ORANGE = (0, 190, 255)
+
+    def draw(
+        self,
+        frame,
+        *,
+        recording: bool,
+        parking_enabled: bool,
+        parking_motion: bool,
+        gps_fix: bool,
+        satellites: int,
+        speed: float,
+        speed_limit: int,
+    ) -> None:
+        row_y = Layout.TOP_ROW_Y
+        row_h = Layout.TOP_ROW_HEIGHT
+
+        # Separadores principales del diseño.
+        x_positions = [
+            0.00,
+            0.15,
+            0.27,
+            0.40,
+            0.57,
+            0.69,
+            0.83,
+            1.00,
+        ]
+
+        cells = [
+            (
+                int(Layout.W * x_positions[index]),
+                int(Layout.W * x_positions[index + 1]),
+            )
+            for index in range(len(x_positions) - 1)
+        ]
+
+        self._draw_rec(
+            frame,
+            cells[0],
+            row_y,
+            row_h,
+            recording,
+        )
+
+        self._draw_parking(
+            frame,
+            cells[1],
+            row_y,
+            row_h,
+            parking_enabled,
+            parking_motion,
+        )
+
+        self._draw_gps(
+            frame,
+            cells[2],
+            row_y,
+            row_h,
+            gps_fix,
+            satellites,
+        )
+
+        self._draw_speed(
+            frame,
+            cells[3],
+            row_y,
+            row_h,
+            speed,
+        )
+
+        self._draw_photo(
+            frame,
+            cells[4],
+            row_y,
+            row_h,
+        )
+
+        self._draw_gallery(
+            frame,
+            cells[5],
+            row_y,
+            row_h,
+        )
+
+        self._draw_speed_limit(
+            frame,
+            cells[6],
+            row_y,
+            row_h,
+            speed_limit,
+        )
+
+        self._draw_cell_separators(
+            frame,
+            cells,
+            row_y,
+            row_h,
+        )
+
+    # ---------------------------------------------------------
+    # REC
+    # ---------------------------------------------------------
+
+    def _draw_rec(
+        self,
+        frame,
+        cell,
+        row_y,
+        row_h,
+        recording,
+    ):
+        center_x, center_y = self._cell_center(
+            cell,
+            row_y,
+            row_h,
+        )
+
+        dot_color = (
+            self.COLOR_RED
+            if recording
+            else self.COLOR_MUTED
+        )
+
+        hud.filled_circle(
+            frame,
+            (
+                center_x - hud.scale(34),
+                center_y,
+            ),
+            7,
+            dot_color,
+        )
+
+        hud.shadow_text(
+            frame,
+            "REC",
+            (
+                center_x - hud.scale(18),
+                center_y + hud.scale(7),
+            ),
+            scale=0.70,
+            color=(
+                self.COLOR_WHITE
+                if recording
+                else self.COLOR_MUTED
+            ),
+            thickness=2,
+        )
+
+    # ---------------------------------------------------------
+    # Parking
+    # ---------------------------------------------------------
+
+    def _draw_parking(
+        self,
+        frame,
+        cell,
+        row_y,
+        row_h,
+        enabled,
+        motion,
+    ):
+        center_x, center_y = self._cell_center(
+            cell,
+            row_y,
+            row_h,
+        )
+
+        if motion:
+            color = self.COLOR_RED
+            status = "MOV"
+        elif enabled:
+            color = self.COLOR_BLUE
+            status = "ON"
+        else:
+            color = self.COLOR_MUTED
+            status = "OFF"
+
+        radius = hud.scale(16)
+
+        cv2.circle(
+            frame,
+            (center_x - hud.scale(25), center_y),
+            radius,
+            color,
+            max(1, hud.scale(2)),
+            cv2.LINE_AA,
+        )
+
+        hud.shadow_text(
+            frame,
+            "P",
+            (
+                center_x - hud.scale(31),
+                center_y + hud.scale(7),
+            ),
+            scale=0.72,
+            color=color,
+            thickness=2,
+        )
+
+        hud.shadow_text(
+            frame,
+            status,
+            (
+                center_x + hud.scale(2),
+                center_y + hud.scale(6),
+            ),
+            scale=0.45,
+            color=color,
+            thickness=1,
+        )
+
+    # ---------------------------------------------------------
+    # GPS
+    # ---------------------------------------------------------
+
+    def _draw_gps(
+        self,
+        frame,
+        cell,
+        row_y,
+        row_h,
+        gps_fix,
+        satellites,
+    ):
+        center_x, center_y = self._cell_center(
+            cell,
+            row_y,
+            row_h,
+        )
+
+        color = (
+            self.COLOR_GREEN
+            if gps_fix
+            else self.COLOR_MUTED
+        )
+
+        bars = min(
+            4,
+            max(
+                0,
+                self._safe_int(satellites) // 3,
+            ),
+        )
+
+        bars_x = center_x - hud.scale(42)
+
+        for index in range(4):
+            height = hud.scale(6 + index * 5)
+            bar_color = (
+                color
+                if index < bars
+                else (65, 70, 72)
+            )
+
+            cv2.rectangle(
+                frame,
+                (
+                    bars_x + hud.scale(index * 8),
+                    center_y + hud.scale(10) - height,
+                ),
+                (
+                    bars_x + hud.scale(index * 8 + 5),
+                    center_y + hud.scale(10),
+                ),
+                bar_color,
+                -1,
+            )
+
+        hud.shadow_text(
+            frame,
+            "GPS",
+            (
+                center_x,
+                center_y + hud.scale(6),
+            ),
+            scale=0.58,
+            color=color,
+            thickness=1,
+        )
+
+    # ---------------------------------------------------------
+    # Velocidad
+    # ---------------------------------------------------------
+
+    def _draw_speed(
+        self,
+        frame,
+        cell,
+        row_y,
+        row_h,
+        speed,
+    ):
+        center_x, center_y = self._cell_center(
+            cell,
+            row_y,
+            row_h,
+        )
+
+        speed_value = max(
+            0,
+            self._safe_int(speed),
+        )
+
+        speed_text = str(speed_value)
+
+        scale = 1.05 * Layout.S
+        scale = max(0.70, scale)
+
+        size = cv2.getTextSize(
+            speed_text,
+            cv2.FONT_HERSHEY_DUPLEX,
+            scale,
+            max(1, hud.scale(2)),
+        )[0]
+
+        number_x = center_x - size[0] // 2
+
+        cv2.putText(
+            frame,
+            speed_text,
+            (
+                number_x,
+                center_y + hud.scale(5),
+            ),
+            cv2.FONT_HERSHEY_DUPLEX,
+            scale,
+            self.COLOR_WHITE,
+            max(1, hud.scale(2)),
+            cv2.LINE_AA,
+        )
+
+        hud.shadow_text(
+            frame,
+            "km/h",
+            (
+                center_x - hud.scale(20),
+                center_y + hud.scale(24),
+            ),
+            scale=0.38,
+            color=self.COLOR_MUTED,
+            thickness=1,
+        )
+
+    # ---------------------------------------------------------
+    # Foto
+    # ---------------------------------------------------------
+
+    def _draw_photo(
+        self,
+        frame,
+        cell,
+        row_y,
+        row_h,
+    ):
+        center_x, center_y = self._cell_center(
+            cell,
+            row_y,
+            row_h,
+        )
+
+        icon_w = hud.scale(34)
+        icon_h = hud.scale(24)
+
+        x1 = center_x - icon_w // 2
+        y1 = center_y - icon_h // 2
+
+        cv2.rectangle(
+            frame,
+            (x1, y1),
+            (x1 + icon_w, y1 + icon_h),
+            self.COLOR_WHITE,
+            max(1, hud.scale(2)),
+            cv2.LINE_AA,
+        )
+
+        cv2.rectangle(
+            frame,
+            (
+                x1 + hud.scale(8),
+                y1 - hud.scale(5),
+            ),
+            (
+                x1 + hud.scale(20),
+                y1,
+            ),
+            self.COLOR_WHITE,
+            -1,
+        )
+
+        cv2.circle(
+            frame,
+            (center_x, center_y),
+            hud.scale(7),
+            self.COLOR_WHITE,
+            max(1, hud.scale(2)),
+            cv2.LINE_AA,
+        )
+
+        self._draw_small_label(
+            frame,
+            "FOTO",
+            center_x,
+            center_y + hud.scale(29),
+        )
+
+    # ---------------------------------------------------------
+    # Vídeos
+    # ---------------------------------------------------------
+
+    def _draw_gallery(
+        self,
+        frame,
+        cell,
+        row_y,
+        row_h,
+    ):
+        center_x, center_y = self._cell_center(
+            cell,
+            row_y,
+            row_h,
+        )
+
+        width = hud.scale(38)
+        height = hud.scale(27)
+
+        x1 = center_x - width // 2
+        y1 = center_y - height // 2
+
+        cv2.rectangle(
+            frame,
+            (x1, y1),
+            (x1 + width, y1 + height),
+            self.COLOR_WHITE,
+            max(1, hud.scale(2)),
+            cv2.LINE_AA,
+        )
+
+        for offset in (
+            hud.scale(7),
+            hud.scale(18),
+            hud.scale(29),
+        ):
+            cv2.line(
+                frame,
+                (
+                    x1 + offset,
+                    y1,
+                ),
+                (
+                    x1 + offset,
+                    y1 + hud.scale(5),
+                ),
+                self.COLOR_WHITE,
+                max(1, hud.scale(1)),
+                cv2.LINE_AA,
+            )
+
+            cv2.line(
+                frame,
+                (
+                    x1 + offset,
+                    y1 + height - hud.scale(5),
+                ),
+                (
+                    x1 + offset,
+                    y1 + height,
+                ),
+                self.COLOR_WHITE,
+                max(1, hud.scale(1)),
+                cv2.LINE_AA,
+            )
+
+        self._draw_small_label(
+            frame,
+            "VIDEOS",
+            center_x,
+            center_y + hud.scale(29),
+        )
+
+    # ---------------------------------------------------------
+    # Límite de velocidad
+    # ---------------------------------------------------------
+
+    def _draw_speed_limit(
+        self,
+        frame,
+        cell,
+        row_y,
+        row_h,
+        speed_limit,
+    ):
+        center_x, center_y = self._cell_center(
+            cell,
+            row_y,
+            row_h,
+        )
+
+        limit = max(
+            0,
+            self._safe_int(speed_limit),
+        )
+
+        radius = hud.scale(22)
+
+        cv2.circle(
+            frame,
+            (center_x, center_y),
+            radius,
+            (245, 245, 245),
+            -1,
+            cv2.LINE_AA,
+        )
+
+        cv2.circle(
+            frame,
+            (center_x, center_y),
+            radius,
+            self.COLOR_RED,
+            max(2, hud.scale(4)),
+            cv2.LINE_AA,
+        )
+
+        text = (
+            str(limit)
+            if limit > 0
+            else "--"
+        )
+
+        scale = max(
+            0.42,
+            0.60 * Layout.S,
+        )
+
+        size = cv2.getTextSize(
+            text,
+            cv2.FONT_HERSHEY_DUPLEX,
+            scale,
+            max(1, hud.scale(2)),
+        )[0]
+
+        cv2.putText(
+            frame,
+            text,
+            (
+                center_x - size[0] // 2,
+                center_y + size[1] // 2,
+            ),
+            cv2.FONT_HERSHEY_DUPLEX,
+            scale,
+            (15, 15, 15),
+            max(1, hud.scale(2)),
+            cv2.LINE_AA,
+        )
+
+    # ---------------------------------------------------------
+    # Utilidades
+    # ---------------------------------------------------------
+
+    def _draw_cell_separators(
+        self,
+        frame,
+        cells,
+        row_y,
+        row_h,
+    ):
+        for left, _ in cells[1:]:
+            cv2.line(
+                frame,
+                (
+                    left,
+                    row_y + hud.scale(13),
+                ),
+                (
+                    left,
+                    row_y + row_h - hud.scale(13),
+                ),
+                (75, 82, 85),
+                max(1, hud.scale(1)),
+                cv2.LINE_AA,
+            )
+
+    def _draw_small_label(
+        self,
+        frame,
+        text,
+        center_x,
+        baseline_y,
+    ):
+        scale = max(
+            0.30,
+            0.38 * Layout.S,
+        )
+
+        size = cv2.getTextSize(
+            text,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            scale,
+            1,
+        )[0]
+
+        cv2.putText(
+            frame,
+            text,
+            (
+                center_x - size[0] // 2,
+                baseline_y,
+            ),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            scale,
+            self.COLOR_MUTED,
+            1,
+            cv2.LINE_AA,
+        )
+
+    @staticmethod
+    def _cell_center(cell, row_y, row_h):
+        left, right = cell
+
+        return (
+            (left + right) // 2,
+            row_y + row_h // 2,
+        )
+
+    @staticmethod
+    def _safe_int(value):
+        try:
+            return int(round(float(value)))
+        except (TypeError, ValueError):
+            return 0
+
+
+action_bar_widget = ActionBarWidget()

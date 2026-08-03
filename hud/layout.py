@@ -1,73 +1,147 @@
 class Layout:
+    """
+    Distribución adaptativa del HUD RoadEye 0.6.
 
-    def update(self, frame):
+    Diseño actual:
 
+        Parte superior:
+            REC, Parking, GPS, velocidad, foto,
+            vídeos y límite de velocidad.
+
+        Parte inferior:
+            Calle, coordenadas, fecha, hora
+            y configuración.
+
+    En fases posteriores, estas posiciones se leerán desde
+    ConfigManager para permitir personalizar el HUD.
+    """
+
+    def update(self, frame, info_position="bottom"):
         h, w = frame.shape[:2]
 
         self.W = w
         self.H = h
 
-        # Escala respecto a Full HD
+        # Escala respecto a Full HD.
         self.S = min(
             w / 1920.0,
-            h / 1080.0
+            h / 1080.0,
         )
 
-        # ==========================
-        # Barra superior
-        # ==========================
+        # =====================================================
+        # Barra superior: acciones y estados
+        # =====================================================
 
-        self.TOP_BAR = int(145 * self.S)
-
-        self.DATE = (
-            int(35 * self.S),
-            int(52 * self.S)
+        self.TOP_ROW_HEIGHT = max(
+            54,
+            int(82 * self.S),
         )
 
+        self.TOP_ROW_Y = 0
+        self.TOP_BAR = self.TOP_ROW_HEIGHT
+
+        # =====================================================
+        # Barra inferior: ubicación e información
+        # =====================================================
+
+        self.INFO_ROW_HEIGHT = max(
+            46,
+            int(68 * self.S),
+        )
+
+        if str(info_position).lower() == "top":
+            self.INFO_ROW_Y = self.TOP_ROW_HEIGHT
+        else:
+            self.INFO_ROW_Y = (
+                self.H
+                - self.INFO_ROW_HEIGHT
+            )
+
+        self.BOTTOM_BAR = self.INFO_ROW_HEIGHT
+
+        # =====================================================
+        # Márgenes generales
+        # =====================================================
+
+        self.HORIZONTAL_MARGIN = max(
+            12,
+            int(24 * self.S),
+        )
+
+        self.ROW_PADDING = max(
+            8,
+            int(14 * self.S),
+        )
+
+        # =====================================================
+        # Posiciones compatibles con widgets existentes
+        # =====================================================
+
+        # REC original:
+        # punto, texto REC y estado LISTO/contador.
         self.REC = (
-            int(45 * self.S),
-            int(110 * self.S)
+            self.HORIZONTAL_MARGIN
+            + int(12 * self.S),
+            self.TOP_ROW_Y
+            + self.TOP_ROW_HEIGHT // 2,
         )
 
+        # GPS antiguo, conservado para compatibilidad.
         self.GPS = (
-            int(470 * self.S),
-            int(115 * self.S)
+            int(self.W * 0.27),
+            self.TOP_ROW_Y
+            + self.TOP_ROW_HEIGHT // 2,
         )
 
+        # Velocidad antigua, conservada para compatibilidad.
         self.SPEED = (
-            w // 2 - int(45 * self.S),
-            int(105 * self.S)
+            self.W // 2,
+            self.TOP_ROW_Y
+            + int(self.TOP_ROW_HEIGHT * 0.66),
         )
 
         self.SPEED_SIGN = (
-            w - int(85 * self.S),
-            int(85 * self.S)
+            self.W
+            - self.HORIZONTAL_MARGIN
+            - int(38 * self.S),
+            self.TOP_ROW_Y
+            + self.TOP_ROW_HEIGHT // 2,
         )
 
-        # ==========================
+        # =====================================================
         # Barra inferior
-        # ==========================
+        # =====================================================
 
-        self.BOTTOM_BAR = int(78 * self.S)
+        self.DATE = (
+            self.HORIZONTAL_MARGIN,
+            self.INFO_ROW_Y
+            + self.INFO_ROW_HEIGHT // 2,
+        )
 
         self.ROAD_ICON = (
-            int(55 * self.S),
-            h - int(45 * self.S)
+            self.HORIZONTAL_MARGIN
+            + int(18 * self.S),
+            self.INFO_ROW_Y
+            + self.INFO_ROW_HEIGHT // 2,
         )
 
         self.ROAD = (
-            int(95 * self.S),
-            h - int(48 * self.S)
+            self.HORIZONTAL_MARGIN
+            + int(52 * self.S),
+            self.INFO_ROW_Y
+            + int(self.INFO_ROW_HEIGHT * 0.47),
         )
 
         self.ROAD_INFO = (
-            int(95 * self.S),
-            h - int(18 * self.S)
+            self.ROAD[0],
+            self.INFO_ROW_Y
+            + int(self.INFO_ROW_HEIGHT * 0.78),
         )
 
         self.SYSTEM = (
-            w - int(430 * self.S),
-            h - int(18 * self.S)
+            self.W - int(430 * self.S),
+            self.INFO_ROW_Y
+            + int(self.INFO_ROW_HEIGHT * 0.72),
         )
 
 

@@ -79,6 +79,16 @@ async def index(
     )
 
 
+@app.get("/settings")
+async def settings_page(
+    request: Request,
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="settings.html",
+    )
+
+
 @app.get("/api/services")
 async def services_status():
     return roadeye_services.summary()

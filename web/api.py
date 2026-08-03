@@ -141,3 +141,255 @@ async def record_status():
         )
 
     return recorder.status()
+
+# ============================================================
+# Configuración del HUD RoadEye 0.6
+# ============================================================
+
+HUD_WIDGETS = {
+    "recording",
+    "parking",
+    "gps",
+    "speed",
+    "snapshot",
+    "gallery",
+    "speed_limit",
+    "road",
+    "coordinates",
+    "date",
+    "time",
+    "settings",
+}
+
+
+def _hud_configuration():
+    return {
+        "enabled": bool(
+            config.get(
+                "hud.enabled",
+                True,
+            )
+        ),
+        "profile": str(
+            config.get(
+                "hud.profile",
+                "normal",
+            )
+        ),
+        "info_position": str(
+            config.get(
+                "hud.info_position",
+                "bottom",
+            )
+        ),
+        "top_opacity": float(
+            config.get(
+                "hud.top_opacity",
+                0.66,
+            )
+        ),
+        "info_opacity": float(
+            config.get(
+                "hud.info_opacity",
+                0.58,
+            )
+        ),
+        "show": {
+            name: bool(
+                config.get(
+                    f"hud.show.{name}",
+                    True,
+                )
+            )
+            for name in sorted(
+                HUD_WIDGETS
+            )
+        },
+    }
+
+
+def _validate_opacity(
+    value,
+    field_name,
+):
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"{field_name} debe ser un número."
+            ),
+        )
+
+    if not 0.0 <= result <= 1.0:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"{field_name} debe estar entre 0 y 1."
+            ),
+        )
+
+    return result
+
+
+@router.get("/api/hud/settings")
+async def hud_settings_get():
+    return {
+        "ok": True,
+        "hud": _hud_configuration(),
+    }
+
+
+@router.put("/api/hud/settings")
+async def hud_settings_update(
+    payload: dict,
+):
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=422,
+            detail="La configuración debe ser un objeto JSON.",
+        )
+
+    current = _hud_configuration()
+
+    enabled = bool(
+        payload.get(
+            "enabled",
+            current["enabled"],
+        )
+    )
+
+    profile = str(
+        payload.get(
+            "profile",
+            current["profile"],
+        )
+    ).strip().lower()
+
+    if profile not in {
+        "minimal",
+        "normal",
+        "professional",
+    }:
+        raise HTTPException(
+            status_code=422,
+            detail="Perfil de HUD no válido.",
+        )
+
+    info_position = str(
+        payload.get(
+            "info_position",
+            current["info_position"],
+        )
+    ).strip().lower()
+
+    if info_position not in {
+        "top",
+        "bottom",
+    }:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "info_position debe ser top o bottom."
+            ),
+        )
+
+    top_opacity = _validate_opacity(
+        payload.get(
+            "top_opacity",
+            current["top_opacity"],
+        ),
+        "top_opacity",
+    )
+
+    info_opacity = _validate_opacity(
+        payload.get(
+            "info_opacity",
+            current["info_opacity"],
+        ),
+        "info_opacity",
+    )
+
+    requested_show = payload.get(
+        "show",
+        {},
+    )
+
+    if not isinstance(
+        requested_show,
+        dict,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="show debe ser un objeto JSON.",
+        )
+
+    updated_show = dict(
+        current["show"]
+    )
+
+    for name, value in requested_show.items():
+        if name not in HUD_WIDGETS:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Widget desconocido: {name}"
+                ),
+            )
+
+        updated_show[name] = bool(
+            value
+        )
+
+    config.update(
+        {
+            "hud": {
+                "enabled": enabled,
+                "profile": profile,
+                "info_position": info_position,
+                "top_opacity": top_opacity,
+                "info_opacity": info_opacity,
+                "show": updated_show,
+            }
+        },
+        save=True,
+    )
+
+    return {
+        "ok": True,
+        "message": (
+            "Configuración del HUD guardada."
+        ),
+        "hud": _hud_configuration(),
+    }
+
+
+@router.post("/api/hud/settings/reset")
+async def hud_settings_reset():
+    defaults = {
+        "enabled": True,
+        "profile": "normal",
+        "info_position": "bottom",
+        "top_opacity": 0.66,
+        "info_opacity": 0.58,
+        "show": {
+            name: True
+            for name in HUD_WIDGETS
+        },
+    }
+
+    config.update(
+        {
+            "hud": defaults
+        },
+        save=True,
+    )
+
+    return {
+        "ok": True,
+        "message": (
+            "Configuración predeterminada restaurada."
+        ),
+        "hud": _hud_configuration(),
+    }

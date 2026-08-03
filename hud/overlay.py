@@ -1,38 +1,45 @@
-import datetime
-
 from core.system_state import system_state
 from hud.hud_engine import hud
 from hud.layout import Layout
-from hud.widgets.gps import gps_widget
-from hud.widgets.rec import rec_widget
-from hud.widgets.road import road_widget
-from hud.widgets.speed import speed_widget
+from hud.settings import hud_settings
+from hud.widgets.action_bar import action_bar_widget
+from hud.widgets.info_bar import info_bar_widget
 
 
 class HUDOverlay:
     """
-    Compone el HUD completo sobre cada frame.
-
-    Widgets independizados:
-    - REC.
-    - GPS.
-    - Velocidad y límite.
-    - Información de carretera.
+    Compositor configurable del HUD RoadEye 0.6.
     """
 
+    TOP_COLOR = (12, 16, 18)
+    INFO_COLOR = (18, 23, 25)
+
     def draw(self, frame):
-        # Adaptar posiciones y tamaños a la resolución.
-        Layout.update(frame)
+        settings = hud_settings.snapshot()
 
-        # Fondos superior e inferior.
-        hud.draw_top_bar(frame)
-        hud.draw_bottom_bar(frame)
+        if not settings["enabled"]:
+            return frame
 
-        # Fecha y hora.
-        self._draw_datetime(frame)
+        Layout.update(
+            frame,
+            info_position=settings[
+                "info_position"
+            ],
+        )
 
-        # Grabación.
-        rec_widget.draw(
+        show = settings["show"]
+
+        self._draw_backgrounds(
+            frame,
+            top_opacity=settings[
+                "top_opacity"
+            ],
+            info_opacity=settings[
+                "info_opacity"
+            ],
+        )
+
+        action_bar_widget.draw(
             frame,
             recording=bool(
                 getattr(
@@ -41,11 +48,20 @@ class HUDOverlay:
                     False,
                 )
             ),
-        )
-
-        # GPS.
-        gps_widget.draw(
-            frame,
+            parking_enabled=bool(
+                getattr(
+                    system_state,
+                    "parking_enabled",
+                    False,
+                )
+            ),
+            parking_motion=bool(
+                getattr(
+                    system_state,
+                    "parking_motion",
+                    False,
+                )
+            ),
             gps_fix=bool(
                 getattr(
                     system_state,
@@ -58,11 +74,6 @@ class HUDOverlay:
                 "satellites",
                 0,
             ),
-        )
-
-        # Velocidad y límite.
-        speed_widget.draw(
-            frame,
             speed=getattr(
                 system_state,
                 "speed",
@@ -73,43 +84,63 @@ class HUDOverlay:
                 "speed_limit",
                 0,
             ),
+            visible=show,
         )
 
-        # Información de carretera.
-        road_widget.draw(
+        info_bar_widget.draw(
             frame,
             road=getattr(
                 system_state,
                 "road",
                 "---",
             ),
-            road_type=getattr(
+            latitude=getattr(
                 system_state,
-                "road_type",
-                "---",
+                "latitude",
+                0.0,
             ),
-            lanes=getattr(
+            longitude=getattr(
                 system_state,
-                "lanes",
-                "?",
+                "longitude",
+                0.0,
             ),
+            gps_fix=bool(
+                getattr(
+                    system_state,
+                    "gps_fix",
+                    False,
+                )
+            ),
+            visible=show,
         )
 
         return frame
 
-    # -------------------------------------------------
-    # Fecha y hora
-    # -------------------------------------------------
-
-    def _draw_datetime(self, frame):
-        now = datetime.datetime.now()
-
-        hud.shadow_text(
+    def _draw_backgrounds(
+        self,
+        frame,
+        *,
+        top_opacity,
+        info_opacity,
+    ):
+        hud.transparent_rect(
             frame,
-            now.strftime("%d/%m/%Y   %H:%M:%S"),
-            Layout.DATE,
-            scale=0.65,
-            thickness=2,
+            x=0,
+            y=Layout.TOP_ROW_Y,
+            w=Layout.W,
+            h=Layout.TOP_ROW_HEIGHT,
+            color=self.TOP_COLOR,
+            alpha=top_opacity,
+        )
+
+        hud.transparent_rect(
+            frame,
+            x=0,
+            y=Layout.INFO_ROW_Y,
+            w=Layout.W,
+            h=Layout.INFO_ROW_HEIGHT,
+            color=self.INFO_COLOR,
+            alpha=info_opacity,
         )
 
 

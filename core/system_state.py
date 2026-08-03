@@ -14,6 +14,13 @@ class SystemState:
         self.recording = False
 
         # -------------------------
+        # Vigilancia de aparcamiento
+        # -------------------------
+
+        self.parking_enabled = False
+        self.parking_motion = False
+
+        # -------------------------
         # GPS
         # -------------------------
 

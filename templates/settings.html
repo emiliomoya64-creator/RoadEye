@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>RoadEye · Personalizar HUD</title>
+
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            --background: #080b0d;
+            --panel: #11171b;
+            --panel-light: #182126;
+            --border: #29363d;
+            --text: #f2f6f7;
+            --muted: #95a3aa;
+            --accent: #36c77a;
+            --danger: #ef5b5b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(
+                    circle at top,
+                    #162126 0,
+                    var(--background) 42%
+                );
+            color: var(--text);
+        }
+
+        .page {
+            width: min(100%, 1080px);
+            margin: 0 auto;
+            padding: 28px 18px 60px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        h1,
+        h2,
+        p {
+            margin-top: 0;
+        }
+
+        h1 {
+            margin-bottom: 6px;
+            font-size: clamp(1.7rem, 5vw, 2.5rem);
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            margin-bottom: 18px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            margin-bottom: 0;
+        }
+
+        .back-link {
+            color: var(--text);
+            text-decoration: none;
+            background: var(--panel-light);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 14px;
+            white-space: nowrap;
+        }
+
+        .preview {
+            position: relative;
+            overflow: hidden;
+            aspect-ratio: 16 / 9;
+            min-height: 260px;
+            margin-bottom: 22px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background:
+                linear-gradient(
+                    150deg,
+                    #53686e 0%,
+                    #263439 45%,
+                    #11171a 100%
+                );
+            box-shadow:
+                0 20px 55px rgba(0, 0, 0, 0.35);
+        }
+
+        .preview-road {
+            position: absolute;
+            width: 54%;
+            height: 120%;
+            left: 23%;
+            top: 25%;
+            background: rgba(15, 18, 19, 0.55);
+            transform: perspective(400px) rotateX(48deg);
+            clip-path: polygon(
+                43% 0,
+                57% 0,
+                100% 100%,
+                0 100%
+            );
+        }
+
+        .hud-row {
+            position: absolute;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            padding: 12px 18px;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+            transition:
+                opacity 160ms ease,
+                transform 160ms ease;
+        }
+
+        .hud-top {
+            top: 0;
+            min-height: 68px;
+            background: rgba(12, 16, 18, 0.66);
+        }
+
+        .hud-info {
+            bottom: 0;
+            min-height: 56px;
+            background: rgba(18, 23, 25, 0.58);
+        }
+
+        .hud-info.position-top {
+            top: 68px;
+            bottom: auto;
+        }
+
+        .hud-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+            font-size: clamp(0.72rem, 2vw, 0.95rem);
+            font-weight: 650;
+        }
+
+        .hud-item.hidden {
+            display: none;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .speed {
+            font-size: 1.4rem;
+        }
+
+        .road {
+            flex: 1;
+            min-width: 110px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns:
+                repeat(
+                    auto-fit,
+                    minmax(280px, 1fr)
+                );
+            gap: 18px;
+        }
+
+        .card {
+            background:
+                linear-gradient(
+                    160deg,
+                    rgba(24, 33, 38, 0.98),
+                    rgba(14, 20, 23, 0.98)
+                );
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 20px;
+        }
+
+        .control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            min-height: 48px;
+            padding: 8px 0;
+            border-bottom:
+                1px solid rgba(255, 255, 255, 0.055);
+        }
+
+        .control:last-child {
+            border-bottom: 0;
+        }
+
+        .control-text strong {
+            display: block;
+            font-size: 0.96rem;
+        }
+
+        .control-text span {
+            display: block;
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        select,
+        input[type="range"] {
+            accent-color: var(--accent);
+        }
+
+        select {
+            min-width: 132px;
+            color: var(--text);
+            background: var(--panel-light);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 9px 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 23px;
+            height: 23px;
+            flex: 0 0 auto;
+            accent-color: var(--accent);
+        }
+
+        .range-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 160px;
+        }
+
+        .range-value {
+            width: 42px;
+            color: var(--muted);
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .actions {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            display: flex;
+            gap: 12px;
+            margin-top: 22px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: rgba(8, 11, 13, 0.92);
+            backdrop-filter: blur(14px);
+        }
+
+        button {
+            min-height: 46px;
+            border: 0;
+            border-radius: 12px;
+            padding: 0 18px;
+            font-weight: 750;
+            cursor: pointer;
+        }
+
+        .save {
+            flex: 1;
+            color: #06130c;
+            background: var(--accent);
+        }
+
+        .reset {
+            color: var(--text);
+            background: var(--panel-light);
+            border: 1px solid var(--border);
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.55;
+        }
+
+        .message {
+            min-height: 24px;
+            margin: 14px 2px 0;
+            color: var(--muted);
+        }
+
+        .message.success {
+            color: var(--accent);
+        }
+
+        .message.error {
+            color: var(--danger);
+        }
+
+        @media (max-width: 620px) {
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .preview {
+                min-height: 220px;
+            }
+
+            .hud-row {
+                gap: 11px;
+                padding-inline: 11px;
+            }
+
+            .optional-mobile {
+                display: none;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="page">
+        <header>
+            <div>
+                <h1>Personalizar HUD</h1>
+                <p class="subtitle">
+                    RoadEye 0.6 · Cambios visibles sin reiniciar
+                </p>
+            </div>
+
+            <a class="back-link" href="/">
+                ← Volver a RoadEye
+            </a>
+        </header>
+
+        <section
+            class="preview"
+            aria-label="Previsualización del HUD"
+        >
+            <div class="preview-road"></div>
+
+            <div id="previewTop" class="hud-row hud-top">
+                <span
+                    class="hud-item"
+                    data-preview="recording"
+                >
+                    <span class="dot"></span>
+                    REC LISTO
+                </span>
+
+                <span
+                    class="hud-item"
+                    data-preview="parking"
+                >
+                    ◉ PARK
+                </span>
+
+                <span
+                    class="hud-item"
+                    data-preview="gps"
+                >
+                    ◉ GPS
+                </span>
+
+                <span
+                    class="hud-item speed"
+                    data-preview="speed"
+                >
+                    0 km/h
+                </span>
+
+                <span
+                    class="hud-item"
+                    data-preview="snapshot"
+                >
+                    📷 FOTO
+                </span>
+
+                <span
+                    class="hud-item"
+                    data-preview="gallery"
+                >
+                    ▣ VÍDEOS
+                </span>
+
+                <span
+                    class="hud-item"
+                    data-preview="speed_limit"
+                >
+                    ⭕ 90
+                </span>
+            </div>
+
+            <div id="previewInfo" class="hud-row hud-info">
+                <span
+                    class="hud-item road"
+                    data-preview="road"
+                >
+                    🛣 Calle o carretera
+                </span>
+
+                <span
+                    class="hud-item optional-mobile"
+                    data-preview="coordinates"
+                >
+                    39.46990, -0.37630
+                </span>
+
+                <span
+                    class="hud-item"
+                    data-preview="date"
+                >
+                    03/08/2026
+                </span>
+
+                <span
+                    class="hud-item"
+                    data-preview="time"
+                >
+                    10:30:00
+                </span>
+
+                <span
+                    class="hud-item"
+                    data-preview="settings"
+                >
+                    ⚙
+                </span>
+            </div>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2>Diseño general</h2>
+
+                <label class="control">
+                    <span class="control-text">
+                        <strong>Mostrar HUD</strong>
+                        <span>Activa todas las capas visuales</span>
+                    </span>
+
+                    <input
+                        id="enabled"
+                        type="checkbox"
+                    >
+                </label>
+
+                <label class="control">
+                    <span class="control-text">
+                        <strong>Perfil</strong>
+                        <span>Base visual del HUD</span>
+                    </span>
+
+                    <select id="profile">
+                        <option value="minimal">
+                            Minimalista
+                        </option>
+                        <option value="normal">
+                            Normal
+                        </option>
+                        <option value="professional">
+                            Profesional
+                        </option>
+                    </select>
+                </label>
+
+                <label class="control">
+                    <span class="control-text">
+                        <strong>Barra informativa</strong>
+                        <span>Ubicación de calle, fecha y hora</span>
+                    </span>
+
+                    <select id="infoPosition">
+                        <option value="bottom">
+                            Abajo
+                        </option>
+                        <option value="top">
+                            Arriba
+                        </option>
+                    </select>
+                </label>
+
+                <label class="control">
+                    <span class="control-text">
+                        <strong>Transparencia superior</strong>
+                        <span>Oscuridad de la barra de conducción</span>
+                    </span>
+
+                    <span class="range-wrap">
+                        <input
+                            id="topOpacity"
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                        >
+                        <span
+                            id="topOpacityValue"
+                            class="range-value"
+                        ></span>
+                    </span>
+                </label>
+
+                <label class="control">
+                    <span class="control-text">
+                        <strong>Transparencia inferior</strong>
+                        <span>Oscuridad de la barra informativa</span>
+                    </span>
+
+                    <span class="range-wrap">
+                        <input
+                            id="infoOpacity"
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                        >
+                        <span
+                            id="infoOpacityValue"
+                            class="range-value"
+                        ></span>
+                    </span>
+                </label>
+            </section>
+
+            <section class="card">
+                <h2>Barra superior</h2>
+
+                <div id="topWidgets"></div>
+            </section>
+
+            <section class="card">
+                <h2>Barra informativa</h2>
+
+                <div id="infoWidgets"></div>
+            </section>
+        </div>
+
+        <p id="message" class="message"></p>
+
+        <div class="actions">
+            <button
+                id="resetButton"
+                class="reset"
+                type="button"
+            >
+                Restaurar
+            </button>
+
+            <button
+                id="saveButton"
+                class="save"
+                type="button"
+            >
+                Guardar cambios
+            </button>
+        </div>
+    </main>
+
+    <script>
+        const widgetGroups = {
+            top: {
+                recording: [
+                    "Grabación",
+                    "REC, LISTO y contador"
+                ],
+                parking: [
+                    "Vigilancia de aparcamiento",
+                    "Estado del detector de movimiento"
+                ],
+                gps: [
+                    "GPS",
+                    "Señal y satélites"
+                ],
+                speed: [
+                    "Velocidad",
+                    "Velocidad actual en km/h"
+                ],
+                snapshot: [
+                    "Fotografía",
+                    "Acceso a captura instantánea"
+                ],
+                gallery: [
+                    "Vídeos",
+                    "Acceso al explorador"
+                ],
+                speed_limit: [
+                    "Límite de velocidad",
+                    "Señal de velocidad máxima"
+                ]
+            },
+
+            info: {
+                road: [
+                    "Calle o carretera",
+                    "Nombre de la vía actual"
+                ],
+                coordinates: [
+                    "Coordenadas",
+                    "Latitud y longitud GPS"
+                ],
+                date: [
+                    "Fecha",
+                    "Fecha actual"
+                ],
+                time: [
+                    "Hora",
+                    "Hora actual"
+                ],
+                settings: [
+                    "Configuración",
+                    "Icono de rueda dentada"
+                ]
+            }
+        };
+
+        let currentSettings = null;
+
+        const message = document.getElementById(
+            "message"
+        );
+
+        const saveButton = document.getElementById(
+            "saveButton"
+        );
+
+        const resetButton = document.getElementById(
+            "resetButton"
+        );
+
+        function createWidgetControls() {
+            createGroup(
+                "topWidgets",
+                widgetGroups.top
+            );
+
+            createGroup(
+                "infoWidgets",
+                widgetGroups.info
+            );
+        }
+
+        function createGroup(
+            containerId,
+            widgets
+        ) {
+            const container = document.getElementById(
+                containerId
+            );
+
+            for (
+                const [name, labels]
+                of Object.entries(widgets)
+            ) {
+                const label = document.createElement(
+                    "label"
+                );
+
+                label.className = "control";
+
+                label.innerHTML = `
+                    <span class="control-text">
+                        <strong>${labels[0]}</strong>
+                        <span>${labels[1]}</span>
+                    </span>
+
+                    <input
+                        type="checkbox"
+                        data-widget="${name}"
+                    >
+                `;
+
+                container.appendChild(
+                    label
+                );
+            }
+        }
+
+        async function loadSettings() {
+            setBusy(
+                true
+            );
+
+            showMessage(
+                "Cargando configuración…"
+            );
+
+            try {
+                const response = await fetch(
+                    "/api/hud/settings",
+                    {
+                        cache: "no-store"
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        "No se pudo cargar la configuración."
+                    );
+                }
+
+                const data = await response.json();
+
+                currentSettings = data.hud;
+
+                applySettingsToForm(
+                    currentSettings
+                );
+
+                showMessage(
+                    "Configuración cargada.",
+                    "success"
+                );
+            } catch (error) {
+                showMessage(
+                    error.message,
+                    "error"
+                );
+            } finally {
+                setBusy(
+                    false
+                );
+            }
+        }
+
+        function applySettingsToForm(
+            settings
+        ) {
+            document.getElementById(
+                "enabled"
+            ).checked = settings.enabled;
+
+            document.getElementById(
+                "profile"
+            ).value = settings.profile;
+
+            document.getElementById(
+                "infoPosition"
+            ).value = settings.info_position;
+
+            document.getElementById(
+                "topOpacity"
+            ).value = settings.top_opacity;
+
+            document.getElementById(
+                "infoOpacity"
+            ).value = settings.info_opacity;
+
+            for (
+                const checkbox
+                of document.querySelectorAll(
+                    "[data-widget]"
+                )
+            ) {
+                checkbox.checked = Boolean(
+                    settings.show[
+                        checkbox.dataset.widget
+                    ]
+                );
+            }
+
+            updatePreview();
+        }
+
+        function readForm() {
+            const show = {};
+
+            for (
+                const checkbox
+                of document.querySelectorAll(
+                    "[data-widget]"
+                )
+            ) {
+                show[
+                    checkbox.dataset.widget
+                ] = checkbox.checked;
+            }
+
+            return {
+                enabled: document.getElementById(
+                    "enabled"
+                ).checked,
+
+                profile: document.getElementById(
+                    "profile"
+                ).value,
+
+                info_position: document.getElementById(
+                    "infoPosition"
+                ).value,
+
+                top_opacity: Number(
+                    document.getElementById(
+                        "topOpacity"
+                    ).value
+                ),
+
+                info_opacity: Number(
+                    document.getElementById(
+                        "infoOpacity"
+                    ).value
+                ),
+
+                show
+            };
+        }
+
+        async function saveSettings() {
+            setBusy(
+                true
+            );
+
+            showMessage(
+                "Guardando cambios…"
+            );
+
+            try {
+                const response = await fetch(
+                    "/api/hud/settings",
+                    {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(
+                            readForm()
+                        )
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail
+                        || "No se pudo guardar."
+                    );
+                }
+
+                currentSettings = data.hud;
+
+                applySettingsToForm(
+                    currentSettings
+                );
+
+                showMessage(
+                    "Cambios aplicados al HUD.",
+                    "success"
+                );
+            } catch (error) {
+                showMessage(
+                    error.message,
+                    "error"
+                );
+            } finally {
+                setBusy(
+                    false
+                );
+            }
+        }
+
+        async function resetSettings() {
+            const confirmed = window.confirm(
+                "¿Restaurar la configuración predeterminada?"
+            );
+
+            if (!confirmed) {
+                return;
+            }
+
+            setBusy(
+                true
+            );
+
+            try {
+                const response = await fetch(
+                    "/api/hud/settings/reset",
+                    {
+                        method: "POST"
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail
+                        || "No se pudo restaurar."
+                    );
+                }
+
+                currentSettings = data.hud;
+
+                applySettingsToForm(
+                    currentSettings
+                );
+
+                showMessage(
+                    "Configuración restaurada.",
+                    "success"
+                );
+            } catch (error) {
+                showMessage(
+                    error.message,
+                    "error"
+                );
+            } finally {
+                setBusy(
+                    false
+                );
+            }
+        }
+
+        function updatePreview() {
+            const settings = readForm();
+
+            const top = document.getElementById(
+                "previewTop"
+            );
+
+            const info = document.getElementById(
+                "previewInfo"
+            );
+
+            top.style.opacity = (
+                settings.enabled
+                ? "1"
+                : "0.16"
+            );
+
+            info.style.opacity = (
+                settings.enabled
+                ? "1"
+                : "0.16"
+            );
+
+            top.style.background = (
+                `rgba(12, 16, 18, ${settings.top_opacity})`
+            );
+
+            info.style.background = (
+                `rgba(18, 23, 25, ${settings.info_opacity})`
+            );
+
+            info.classList.toggle(
+                "position-top",
+                settings.info_position === "top"
+            );
+
+            for (
+                const preview
+                of document.querySelectorAll(
+                    "[data-preview]"
+                )
+            ) {
+                const name = preview.dataset.preview;
+
+                preview.classList.toggle(
+                    "hidden",
+                    !settings.show[name]
+                );
+            }
+
+            document.getElementById(
+                "topOpacityValue"
+            ).textContent = Math.round(
+                settings.top_opacity * 100
+            ) + "%";
+
+            document.getElementById(
+                "infoOpacityValue"
+            ).textContent = Math.round(
+                settings.info_opacity * 100
+            ) + "%";
+        }
+
+        function showMessage(
+            text,
+            type = ""
+        ) {
+            message.textContent = text;
+            message.className = (
+                "message "
+                + type
+            ).trim();
+        }
+
+        function setBusy(
+            busy
+        ) {
+            saveButton.disabled = busy;
+            resetButton.disabled = busy;
+        }
+
+        createWidgetControls();
+
+        document.addEventListener(
+            "change",
+            updatePreview
+        );
+
+        document.addEventListener(
+            "input",
+            updatePreview
+        );
+
+        saveButton.addEventListener(
+            "click",
+            saveSettings
+        );
+
+        resetButton.addEventListener(
+            "click",
+            resetSettings
+        );
+
+        loadSettings();
+    </script>
+</body>
+</html>
