@@ -26,6 +26,7 @@ class TripSession:
         trips_directory: Path,
         *,
         trip_type: str = "driving",
+        started_at: Optional[datetime] = None,
     ) -> None:
         self.trips_directory = Path(
             trips_directory
@@ -36,7 +37,12 @@ class TripSession:
             exist_ok=True,
         )
 
-        self.started_at = datetime.now()
+        self.started_at = (
+            started_at
+            if started_at is not None
+            else datetime.now()
+        )
+
         self.finished_at: Optional[datetime] = None
 
         self.trip_id = str(

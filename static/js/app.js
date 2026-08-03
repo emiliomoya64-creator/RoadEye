@@ -147,6 +147,66 @@ class PopupManager {
             };
         }
 
+        if (name === "trips") {
+            return {
+                eyebrow: "Trayectos",
+                title: "Viajes de RoadEye",
+                content: `
+                    <div class="trips-browser">
+                        <div class="video-browser-toolbar">
+                            <div>
+                                <strong id="tripCount">
+                                    Cargando viajes…
+                                </strong>
+
+                                <span id="tripFolder"></span>
+                            </div>
+
+                            <button
+                                id="refreshTrips"
+                                class="browser-button"
+                                type="button"
+                            >
+                                Actualizar
+                            </button>
+                        </div>
+
+                        <div class="trips-layout">
+                            <section
+                                id="tripList"
+                                class="trip-list"
+                            >
+                                <div class="browser-loading">
+                                    Buscando viajes…
+                                </div>
+                            </section>
+
+                            <section
+                                id="tripDetails"
+                                class="trip-details"
+                            >
+                                <div class="player-empty">
+                                    <div class="empty-icon">⌁</div>
+
+                                    <strong>
+                                        Selecciona un viaje
+                                    </strong>
+
+                                    <span>
+                                        Aquí aparecerán su ruta,
+                                        estadísticas y segmentos.
+                                    </span>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                `,
+                onOpen: () => {
+                    initializeTripsBrowser();
+                }
+            };
+        }
+
         if (name === "videos") {
             return {
                 eyebrow: "Grabaciones",
@@ -1278,5 +1338,495 @@ function formatTrackTime(seconds) {
         String(minutes).padStart(2, "0")
         + ":"
         + String(remainingSeconds).padStart(2, "0")
+    );
+}
+
+
+// ============================================================
+// Explorador de viajes
+// ============================================================
+
+let selectedTrip = null;
+let tripMap = null;
+let tripRouteLayer = null;
+
+
+async function initializeTripsBrowser() {
+    const refreshButton = document.getElementById(
+        "refreshTrips"
+    );
+
+    if (refreshButton) {
+        refreshButton.onclick = loadTrips;
+    }
+
+    await loadTrips();
+}
+
+
+async function loadTrips() {
+    const list = document.getElementById(
+        "tripList"
+    );
+
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = `
+        <div class="browser-loading">
+            Buscando viajes…
+        </div>
+    `;
+
+    try {
+        const response = await fetch(
+            "/api/trips",
+            {
+                cache: "no-store"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail
+                || "No se pudieron cargar los viajes."
+            );
+        }
+
+        document.getElementById(
+            "tripCount"
+        ).textContent = (
+            `${data.count} `
+            + (
+                data.count === 1
+                ? "viaje"
+                : "viajes"
+            )
+        );
+
+        document.getElementById(
+            "tripFolder"
+        ).textContent = data.folder;
+
+        renderTripsList(
+            data.trips
+        );
+
+    } catch (error) {
+        list.innerHTML = `
+            <div class="browser-error">
+                ${escapeHtml(error.message)}
+            </div>
+        `;
+    }
+}
+
+
+function renderTripsList(trips) {
+    const list = document.getElementById(
+        "tripList"
+    );
+
+    if (!trips.length) {
+        list.innerHTML = `
+            <div class="browser-empty">
+                <div class="empty-icon">⌁</div>
+
+                <strong>
+                    No hay viajes
+                </strong>
+
+                <span>
+                    Los viajes nuevos aparecerán aquí.
+                </span>
+            </div>
+        `;
+
+        return;
+    }
+
+    list.innerHTML = "";
+
+    for (const trip of trips) {
+        const button = document.createElement(
+            "button"
+        );
+
+        button.className = "trip-list-item";
+        button.type = "button";
+
+        button.innerHTML = `
+            <span class="trip-icon">
+                ${trip.type === "parking" ? "P" : "⌁"}
+            </span>
+
+            <span class="trip-main">
+                <strong>
+                    ${escapeHtml(trip.date)}
+                    ·
+                    ${escapeHtml(trip.time)}
+                </strong>
+
+                <span>
+                    ${escapeHtml(trip.duration)}
+                    ·
+                    ${trip.segment_count} segmentos
+                </span>
+
+                <span>
+                    Máx. ${trip.speed.max} km/h
+                    ·
+                    ${escapeHtml(trip.size)}
+                </span>
+            </span>
+
+            <span class="video-kind ${trip.type}">
+                ${trip.type === "parking" ? "Parking" : "Viaje"}
+            </span>
+        `;
+
+        button.onclick = (
+            () => selectTrip(
+                trip,
+                button
+            )
+        );
+
+        list.appendChild(
+            button
+        );
+    }
+}
+
+
+async function selectTrip(
+    tripSummary,
+    button
+) {
+    document.querySelectorAll(
+        ".trip-list-item"
+    ).forEach((item) => {
+        item.classList.remove(
+            "selected"
+        );
+    });
+
+    button.classList.add(
+        "selected"
+    );
+
+    const details = document.getElementById(
+        "tripDetails"
+    );
+
+    details.innerHTML = `
+        <div class="browser-loading">
+            Cargando viaje…
+        </div>
+    `;
+
+    try {
+        const response = await fetch(
+            `/api/trips/${
+                encodeURIComponent(
+                    tripSummary.filename
+                )
+            }`,
+            {
+                cache: "no-store"
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail
+                || "No se pudo cargar el viaje."
+            );
+        }
+
+        selectedTrip = data.trip;
+
+        renderTripDetails(
+            selectedTrip
+        );
+
+    } catch (error) {
+        details.innerHTML = `
+            <div class="browser-error">
+                ${escapeHtml(error.message)}
+            </div>
+        `;
+    }
+}
+
+
+function renderTripDetails(trip) {
+    const details = document.getElementById(
+        "tripDetails"
+    );
+
+    const segments = trip.segments
+        .map((segment, index) => {
+            return `
+                <button
+                    class="trip-segment"
+                    type="button"
+                    data-segment="${escapeHtml(segment.filename)}"
+                >
+                    <span>
+                        ${index + 1}
+                    </span>
+
+                    <strong>
+                        ${escapeHtml(segment.filename)}
+                    </strong>
+
+                    <small>
+                        ${formatSeconds(segment.duration)}
+                    </small>
+                </button>
+            `;
+        })
+        .join("");
+
+    details.innerHTML = `
+        <div class="trip-details-content">
+            <div class="trip-summary-grid">
+                <div>
+                    <span>Inicio</span>
+                    <strong>
+                        ${escapeHtml(trip.date)}
+                        ·
+                        ${escapeHtml(trip.time)}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Duración</span>
+                    <strong>${escapeHtml(trip.duration)}</strong>
+                </div>
+
+                <div>
+                    <span>Segmentos</span>
+                    <strong>${trip.segment_count}</strong>
+                </div>
+
+                <div>
+                    <span>Velocidad máxima</span>
+                    <strong>${trip.speed.max} km/h</strong>
+                </div>
+
+                <div>
+                    <span>Velocidad media</span>
+                    <strong>${trip.speed.average} km/h</strong>
+                </div>
+
+                <div>
+                    <span>Puntos GPS</span>
+                    <strong>${trip.route_points}</strong>
+                </div>
+            </div>
+
+            <h3>Ruta completa</h3>
+
+            <div id="tripMap"></div>
+
+            <div
+                id="tripRouteEmpty"
+                class="route-empty hidden"
+            >
+                Este viaje no contiene una ruta GPS.
+            </div>
+
+            <h3>Vídeos del viaje</h3>
+
+            <div class="trip-segments">
+                ${segments}
+            </div>
+        </div>
+    `;
+
+    document.querySelectorAll(
+        ".trip-segment"
+    ).forEach((button) => {
+        button.onclick = () => {
+            popupManager.close();
+
+            window.setTimeout(
+                () => {
+                    popupManager.open("videos");
+
+                    window.setTimeout(
+                        async () => {
+                            await loadVideos();
+
+                            const target = Array.from(
+                                document.querySelectorAll(
+                                    ".video-list-item"
+                                )
+                            ).find(
+                                item => (
+                                    item.dataset.videoName
+                                    === button.dataset.segment
+                                )
+                            );
+
+                            if (target) {
+                                target.click();
+                            }
+                        },
+                        250
+                    );
+                },
+                100
+            );
+        };
+    });
+
+    window.setTimeout(
+        renderTripMap,
+        80
+    );
+}
+
+
+function renderTripMap() {
+    const mapElement = document.getElementById(
+        "tripMap"
+    );
+
+    const emptyElement = document.getElementById(
+        "tripRouteEmpty"
+    );
+
+    if (!mapElement || !selectedTrip) {
+        return;
+    }
+
+    const route = Array.isArray(
+        selectedTrip.route
+    )
+        ? selectedTrip.route
+        : [];
+
+    if (!route.length) {
+        mapElement.classList.add(
+            "hidden"
+        );
+
+        emptyElement.classList.remove(
+            "hidden"
+        );
+
+        return;
+    }
+
+    if (typeof L === "undefined") {
+        mapElement.classList.add(
+            "hidden"
+        );
+
+        emptyElement.textContent = (
+            "No se pudo cargar el sistema de mapas."
+        );
+
+        emptyElement.classList.remove(
+            "hidden"
+        );
+
+        return;
+    }
+
+    if (tripMap) {
+        tripMap.remove();
+        tripMap = null;
+        tripRouteLayer = null;
+    }
+
+    tripMap = L.map(
+        mapElement
+    );
+
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            maxZoom: 19,
+            attribution:
+                "&copy; OpenStreetMap contributors"
+        }
+    ).addTo(
+        tripMap
+    );
+
+    const coordinates = route.map(
+        point => [
+            Number(point.lat),
+            Number(point.lon)
+        ]
+    );
+
+    tripRouteLayer = L.polyline(
+        coordinates,
+        {
+            weight: 5,
+            opacity: 0.9
+        }
+    ).addTo(
+        tripMap
+    );
+
+    L.marker(
+        coordinates[0]
+    )
+        .addTo(tripMap)
+        .bindPopup("Inicio");
+
+    L.marker(
+        coordinates[
+            coordinates.length - 1
+        ]
+    )
+        .addTo(tripMap)
+        .bindPopup("Final");
+
+    if (coordinates.length === 1) {
+        tripMap.setView(
+            coordinates[0],
+            17
+        );
+    } else {
+        tripMap.fitBounds(
+            tripRouteLayer.getBounds(),
+            {
+                padding: [30, 30]
+            }
+        );
+    }
+
+    tripMap.invalidateSize();
+}
+
+
+function formatSeconds(value) {
+    const seconds = Math.max(
+        0,
+        Math.round(
+            Number(value) || 0
+        )
+    );
+
+    const minutes = Math.floor(
+        seconds / 60
+    );
+
+    return (
+        String(minutes).padStart(2, "0")
+        + ":"
+        + String(seconds % 60).padStart(2, "0")
     );
 }

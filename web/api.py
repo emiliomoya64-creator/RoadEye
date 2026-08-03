@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from core.config_manager import PROJECT_DIR, config
@@ -1042,3 +1042,346 @@ async def video_thumbnail(
             )
         },
     )
+
+
+# ============================================================
+# Explorador de viajes RoadEye 0.6
+# ============================================================
+
+def _trips_directory() -> Path:
+    configured_folder = Path(
+        str(
+            config.get(
+                "trips.folder",
+                "trips",
+            )
+        )
+    )
+
+    if not configured_folder.is_absolute():
+        configured_folder = (
+            PROJECT_DIR
+            / configured_folder
+        )
+
+    return configured_folder.resolve()
+
+
+def _load_trip_file(
+    path: Path,
+) -> dict:
+    try:
+        data = json.loads(
+            path.read_text(
+                encoding="utf-8"
+            )
+        )
+
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ) as exc:
+        logger.warning(
+            "No se pudo leer el viaje %s: %s",
+            path,
+            exc,
+        )
+
+        return {}
+
+    if not isinstance(
+        data,
+        dict,
+    ):
+        return {}
+
+    return data
+
+
+def _safe_trip_path(
+    filename: str,
+) -> Path:
+    clean_name = Path(
+        str(filename)
+    ).name
+
+    if not clean_name.endswith(
+        ".json"
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Nombre de viaje no válido.",
+        )
+
+    directory = _trips_directory()
+
+    candidate = (
+        directory
+        / clean_name
+    ).resolve()
+
+    try:
+        candidate.relative_to(
+            directory
+        )
+
+    except ValueError:
+        raise HTTPException(
+            status_code=403,
+            detail="Ruta de viaje no permitida.",
+        )
+
+    if (
+        not candidate.exists()
+        or not candidate.is_file()
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="El viaje no existe.",
+        )
+
+    return candidate
+
+
+def _trip_item(
+    path: Path,
+    *,
+    include_route: bool = False,
+) -> dict:
+    data = _load_trip_file(
+        path
+    )
+
+    started_text = data.get(
+        "started"
+    )
+
+    started_at = None
+
+    if started_text:
+        try:
+            started_at = datetime.fromisoformat(
+                str(started_text)
+            )
+        except ValueError:
+            started_at = None
+
+    if started_at is None:
+        started_at = datetime.fromtimestamp(
+            path.stat().st_mtime
+        )
+
+    duration = _safe_number(
+        data.get(
+            "duration",
+            0,
+        )
+    )
+
+    speed = data.get(
+        "speed",
+        {},
+    )
+
+    if not isinstance(
+        speed,
+        dict,
+    ):
+        speed = {}
+
+    gps = data.get(
+        "gps",
+        {},
+    )
+
+    if not isinstance(
+        gps,
+        dict,
+    ):
+        gps = {}
+
+    segments = data.get(
+        "segments",
+        [],
+    )
+
+    if not isinstance(
+        segments,
+        list,
+    ):
+        segments = []
+
+    route = data.get(
+        "route",
+        [],
+    )
+
+    if not isinstance(
+        route,
+        list,
+    ):
+        route = []
+
+    result = {
+        "filename": path.name,
+        "trip_id": data.get(
+            "trip_id"
+        ),
+        "trip_name": data.get(
+            "trip_name",
+            path.stem,
+        ),
+        "type": data.get(
+            "type",
+            "driving",
+        ),
+        "status": data.get(
+            "status",
+            "finished",
+        ),
+        "started": started_at.isoformat(),
+        "finished": data.get(
+            "finished"
+        ),
+        "date": started_at.strftime(
+            "%d/%m/%Y"
+        ),
+        "time": started_at.strftime(
+            "%H:%M:%S"
+        ),
+        "duration_seconds": round(
+            duration,
+            2,
+        ),
+        "duration": _format_duration(
+            duration
+        ),
+        "size_bytes": int(
+            data.get(
+                "size_bytes",
+                0,
+            )
+            or 0
+        ),
+        "size": _human_size(
+            int(
+                data.get(
+                    "size_bytes",
+                    0,
+                )
+                or 0
+            )
+        ),
+        "segment_count": int(
+            data.get(
+                "segment_count",
+                len(segments),
+            )
+            or len(segments)
+        ),
+        "segments": segments,
+        "speed": {
+            "max": round(
+                _safe_number(
+                    speed.get(
+                        "max",
+                        0,
+                    )
+                ),
+                1,
+            ),
+            "average": round(
+                _safe_number(
+                    speed.get(
+                        "average",
+                        0,
+                    )
+                ),
+                1,
+            ),
+        },
+        "gps": {
+            "start": gps.get(
+                "start"
+            ),
+            "end": gps.get(
+                "end"
+            ),
+            "start_text": _coordinate_text(
+                gps.get(
+                    "start"
+                )
+            ),
+            "end_text": _coordinate_text(
+                gps.get(
+                    "end"
+                )
+            ),
+        },
+        "route_points": int(
+            data.get(
+                "route_points",
+                len(route),
+            )
+            or len(route)
+        ),
+    }
+
+    if include_route:
+        result["route"] = route
+
+    return result
+
+
+@router.get("/api/trips")
+async def trips_list():
+    directory = _trips_directory()
+
+    directory.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    files = sorted(
+        directory.glob(
+            "trip_*.json"
+        ),
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+
+    return {
+        "ok": True,
+        "folder": str(
+            directory
+        ),
+        "count": len(
+            files
+        ),
+        "trips": [
+            _trip_item(
+                path,
+                include_route=False,
+            )
+            for path in files
+        ],
+    }
+
+
+@router.get(
+    "/api/trips/{filename}"
+)
+async def trip_details(
+    filename: str,
+):
+    path = _safe_trip_path(
+        filename
+    )
+
+    return {
+        "ok": True,
+        "trip": _trip_item(
+            path,
+            include_route=True,
+        ),
+    }

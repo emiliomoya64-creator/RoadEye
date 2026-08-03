@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from threading import RLock
 from typing import Any, Optional
@@ -107,11 +108,20 @@ class TripManager:
                 else "driving"
             )
 
+            segment_started_at = (
+                self._parse_datetime(
+                    metadata.get(
+                        "created"
+                    )
+                )
+            )
+
             if self._active_trip is None:
                 self._active_trip = (
                     TripSession(
                         self.trips_directory,
                         trip_type=trip_type,
+                        started_at=segment_started_at,
                     )
                 )
 
@@ -130,6 +140,7 @@ class TripManager:
                     TripSession(
                         self.trips_directory,
                         trip_type=trip_type,
+                        started_at=segment_started_at,
                     )
                 )
 
@@ -198,6 +209,21 @@ class TripManager:
         )
 
         return metadata
+
+    @staticmethod
+    def _parse_datetime(
+        value,
+    ) -> Optional[datetime]:
+        if value is None:
+            return None
+
+        try:
+            return datetime.fromisoformat(
+                str(value)
+            )
+
+        except ValueError:
+            return None
 
     # ---------------------------------------------------------
     # Escritura del JSON individual
