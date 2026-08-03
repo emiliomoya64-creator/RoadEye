@@ -434,6 +434,14 @@ class PopupManager {
                                         </a>
 
                                         <button
+                                            id="videoProtection"
+                                            class="browser-button"
+                                            type="button"
+                                        >
+                                            Proteger
+                                        </button>
+
+                                        <button
                                             id="videoDelete"
                                             class="browser-button danger"
                                             type="button"
@@ -1063,6 +1071,25 @@ function selectVideo(
     download.setAttribute(
         "download",
         video.name
+    );
+
+    const protectionButton = document.getElementById(
+        "videoProtection"
+    );
+
+    protectionButton.textContent = (
+        video.protected
+        ? "Quitar protección"
+        : "Proteger"
+    );
+
+    protectionButton.classList.toggle(
+        "protected",
+        Boolean(video.protected)
+    );
+
+    protectionButton.onclick = (
+        () => toggleSelectedVideoProtection()
     );
 
     const deleteButton = document.getElementById(
@@ -1794,6 +1821,11 @@ function renderTripDetails(trip) {
         `
     );
 
+    const timelineHtml = buildTripTimeline(
+        trip,
+        events
+    );
+
     details.innerHTML = `
         <div class="trip-details-content">
             <div class="trip-summary-grid">
@@ -1873,6 +1905,10 @@ function renderTripDetails(trip) {
                 </div>
             </div>
 
+            <h3>Línea temporal del viaje</h3>
+
+            ${timelineHtml}
+
             <h3>Ruta completa</h3>
 
             <div id="tripMap"></div>
@@ -1902,6 +1938,32 @@ function renderTripDetails(trip) {
             </div>
         </div>
     `;
+
+    document.querySelectorAll(
+        ".timeline-event"
+    ).forEach((button) => {
+        button.onclick = () => {
+            const eventId = (
+                button.dataset.eventId
+            );
+
+            const event = (
+                Array.isArray(selectedTrip.events)
+                ? selectedTrip.events.find(
+                    item => (
+                        item.event_id === eventId
+                    )
+                )
+                : null
+            );
+
+            if (event) {
+                openTimelineEvent(
+                    event
+                );
+            }
+        };
+    });
 
     document.querySelectorAll(
         ".trip-event"
@@ -2527,5 +2589,306 @@ if (capturePhotoButton) {
     capturePhotoButton.addEventListener(
         "click",
         captureRoadEyePhoto
+    );
+}
+
+
+async function toggleSelectedVideoProtection() {
+    if (!selectedVideo) {
+        return;
+    }
+
+    const newProtectedState = (
+        !Boolean(
+            selectedVideo.protected
+        )
+    );
+
+    try {
+        const response = await fetch(
+            `/api/videos/${
+                encodeURIComponent(
+                    selectedVideo.name
+                )
+            }/protection`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(
+                    {
+                        protected: newProtectedState
+                    }
+                )
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail
+                || "No se pudo cambiar la protección."
+            );
+        }
+
+        selectedVideo.protected = (
+            data.protected
+        );
+
+        await loadVideos();
+
+    } catch (error) {
+        window.alert(
+            error.message
+        );
+    }
+}
+
+
+// ============================================================
+// Línea temporal del viaje
+// ============================================================
+
+function buildTripTimeline(
+    trip,
+    events
+) {
+    const duration = Math.max(
+        0.01,
+        Number(
+            trip.duration_seconds
+            || trip.duration
+            || 0
+        )
+    );
+
+    const normalizedEvents = (
+        Array.isArray(events)
+        ? events
+        : []
+    );
+
+    const markers = normalizedEvents
+        .map((event) => {
+            const tripTime = Math.max(
+                0,
+                Number(
+                    event.trip_time
+                    || 0
+                )
+            );
+
+            const percentage = Math.max(
+                0,
+                Math.min(
+                    100,
+                    (
+                        tripTime
+                        / duration
+                    ) * 100
+                )
+            );
+
+            const eventType = escapeHtml(
+                event.type || "manual"
+            );
+
+            const severity = escapeHtml(
+                event.severity || "info"
+            );
+
+            const label = escapeHtml(
+                event.label || "Evento"
+            );
+
+            const speed = Number(
+                event.speed || 0
+            ).toFixed(1);
+
+            const protectedLabel = (
+                event.protected
+                ? " · Protegido"
+                : ""
+            );
+
+            const title = escapeHtml(
+                `${event.label || "Evento"} · `
+                + `${formatTrackTime(tripTime)} · `
+                + `${speed} km/h`
+                + protectedLabel
+            );
+
+            return `
+                <button
+                    class="
+                        timeline-event
+                        timeline-${eventType}
+                        severity-${severity}
+                        ${
+                            event.protected
+                            ? "protected"
+                            : ""
+                        }
+                    "
+                    type="button"
+                    data-event-id="${escapeHtml(
+                        event.event_id || ""
+                    )}"
+                    style="left: ${percentage.toFixed(3)}%;"
+                    title="${title}"
+                    aria-label="${title}"
+                >
+                    <span class="timeline-event-symbol">
+                        ${eventIcon(event.type)}
+                    </span>
+
+                    <span class="timeline-event-tooltip">
+                        <strong>${label}</strong>
+
+                        <small>
+                            ${formatTrackTime(tripTime)}
+                            ·
+                            ${speed} km/h
+                        </small>
+                    </span>
+                </button>
+            `;
+        })
+        .join("");
+
+    const quarter = duration / 4;
+
+    return `
+        <section class="trip-timeline">
+            <div class="timeline-summary">
+                <span>
+                    Inicio
+                    <strong>00:00</strong>
+                </span>
+
+                <span>
+                    ${normalizedEvents.length}
+                    ${
+                        normalizedEvents.length === 1
+                        ? "evento"
+                        : "eventos"
+                    }
+                </span>
+
+                <span>
+                    Final
+                    <strong>
+                        ${formatTimelineDuration(duration)}
+                    </strong>
+                </span>
+            </div>
+
+            <div class="timeline-track-wrap">
+                <div class="timeline-track">
+                    <span
+                        class="timeline-progress"
+                        aria-hidden="true"
+                    ></span>
+
+                    ${markers}
+                </div>
+
+                <div class="timeline-scale">
+                    <span>00:00</span>
+                    <span>
+                        ${formatTimelineDuration(quarter)}
+                    </span>
+                    <span>
+                        ${formatTimelineDuration(quarter * 2)}
+                    </span>
+                    <span>
+                        ${formatTimelineDuration(quarter * 3)}
+                    </span>
+                    <span>
+                        ${formatTimelineDuration(duration)}
+                    </span>
+                </div>
+            </div>
+
+            ${
+                normalizedEvents.length
+                ? `
+                    <p class="timeline-help">
+                        Pulsa cualquier marcador para abrir
+                        el vídeo o la fotografía correspondiente.
+                    </p>
+                `
+                : `
+                    <div class="timeline-empty">
+                        Este viaje no contiene eventos.
+                    </div>
+                `
+            }
+        </section>
+    `;
+}
+
+
+function openTimelineEvent(event) {
+    if (
+        event.type === "photo"
+        && event.data
+        && event.data.photo
+    ) {
+        pendingPhotoEvent = event;
+        popupManager.open(
+            "photo"
+        );
+
+        return;
+    }
+
+    openTripEvent(
+        event.segment,
+        Number(
+            event.segment_time || 0
+        )
+    );
+}
+
+
+function formatTimelineDuration(value) {
+    const totalSeconds = Math.max(
+        0,
+        Math.round(
+            Number(value) || 0
+        )
+    );
+
+    const hours = Math.floor(
+        totalSeconds / 3600
+    );
+
+    const minutes = Math.floor(
+        (
+            totalSeconds % 3600
+        ) / 60
+    );
+
+    const seconds = (
+        totalSeconds % 60
+    );
+
+    if (hours > 0) {
+        return (
+            String(hours).padStart(2, "0")
+            + ":"
+            + String(minutes).padStart(2, "0")
+            + ":"
+            + String(seconds).padStart(2, "0")
+        );
+    }
+
+    return (
+        String(minutes).padStart(2, "0")
+        + ":"
+        + String(seconds).padStart(2, "0")
     );
 }

@@ -36,3 +36,4 @@ photos/
 *.events-backup
 *.event-seek-backup
 *.photo-backup
+*.timeline-backup
