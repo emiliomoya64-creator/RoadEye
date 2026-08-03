@@ -70,6 +70,7 @@ class TripSession:
 
         self.segments: list[dict[str, Any]] = []
         self.route: list[dict[str, float]] = []
+        self.events: list[dict[str, Any]] = []
 
         self.total_size_bytes = 0
         self.total_duration = 0.0
@@ -341,6 +342,156 @@ class TripSession:
             )
 
     # ---------------------------------------------------------
+    # Eventos
+    # ---------------------------------------------------------
+
+    def add_event(
+        self,
+        event: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Añade un evento al viaje y guarda inmediatamente el JSON.
+        """
+
+        if not isinstance(
+            event,
+            dict,
+        ):
+            raise TypeError(
+                "El evento debe ser un diccionario."
+            )
+
+        event_id = str(
+            event.get(
+                "event_id",
+                "",
+            )
+        ).strip()
+
+        if not event_id:
+            raise ValueError(
+                "El evento no contiene event_id."
+            )
+
+        if any(
+            existing.get(
+                "event_id"
+            ) == event_id
+            for existing in self.events
+        ):
+            return event
+
+        normalized_event = {
+            "event_id": event_id,
+            "type": str(
+                event.get(
+                    "type",
+                    "manual",
+                )
+            ).strip().lower(),
+            "source": str(
+                event.get(
+                    "source",
+                    "system",
+                )
+            ).strip().lower(),
+            "created": event.get(
+                "created"
+            ),
+            "trip_time": round(
+                max(
+                    0.0,
+                    self._safe_float(
+                        event.get(
+                            "trip_time",
+                            0,
+                        )
+                    ),
+                ),
+                2,
+            ),
+            "segment": event.get(
+                "segment"
+            ),
+            "segment_time": round(
+                max(
+                    0.0,
+                    self._safe_float(
+                        event.get(
+                            "segment_time",
+                            0,
+                        )
+                    ),
+                ),
+                2,
+            ),
+            "label": str(
+                event.get(
+                    "label",
+                    "Evento",
+                )
+            ).strip(),
+            "severity": str(
+                event.get(
+                    "severity",
+                    "info",
+                )
+            ).strip().lower(),
+            "protected": bool(
+                event.get(
+                    "protected",
+                    False,
+                )
+            ),
+            "gps": event.get(
+                "gps"
+            ),
+            "speed": round(
+                max(
+                    0.0,
+                    self._safe_float(
+                        event.get(
+                            "speed",
+                            0,
+                        )
+                    ),
+                ),
+                1,
+            ),
+            "data": (
+                event.get(
+                    "data",
+                    {},
+                )
+                if isinstance(
+                    event.get(
+                        "data",
+                        {},
+                    ),
+                    dict,
+                )
+                else {}
+            ),
+        }
+
+        self.events.append(
+            normalized_event
+        )
+
+        self.events.sort(
+            key=lambda item: self._safe_float(
+                item.get(
+                    "trip_time",
+                    0,
+                )
+            )
+        )
+
+        self.save()
+
+        return normalized_event
+
+    # ---------------------------------------------------------
     # Finalización
     # ---------------------------------------------------------
 
@@ -485,6 +636,12 @@ class TripSession:
             ),
             "route_points": len(
                 self.route
+            ),
+            "events": list(
+                self.events
+            ),
+            "event_count": len(
+                self.events
             ),
         }
 

@@ -25,3 +25,14 @@ startup/boot_preview.png
 
 # Datos generados por RoadEye
 trips/
+
+# Fotografías generadas por RoadEye
+photos/
+
+# Copias locales temporales de desarrollo
+*.backup
+*-backup
+*.stats-backup
+*.events-backup
+*.event-seek-backup
+*.photo-backup

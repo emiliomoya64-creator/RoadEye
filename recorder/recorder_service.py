@@ -222,6 +222,12 @@ class RecorderService:
         if self.recording:
             return True
 
+        # El viaje se abre antes de activar la grabación.
+        trip_manager.ensure_trip(
+            trip_type="driving",
+            started_at=datetime.now(),
+        )
+
         self._recording_event.set()
 
         system_state.set(
@@ -826,6 +832,15 @@ class RecorderService:
         with self._lock:
             current_file = self._current_file
 
+            segment_elapsed = 0.0
+
+            if self._segment_start is not None:
+                segment_elapsed = max(
+                    0.0,
+                    time.monotonic()
+                    - self._segment_start,
+                )
+
             return {
                 "service_running": self.running,
                 "recording": self.recording,
@@ -840,6 +855,10 @@ class RecorderService:
                     str(current_file)
                     if current_file is not None
                     else None
+                ),
+                "segment_elapsed": round(
+                    segment_elapsed,
+                    2,
                 ),
             }
 

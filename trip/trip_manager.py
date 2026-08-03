@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import tempfile
+import uuid
 from datetime import datetime
 from pathlib import Path
 from threading import RLock
@@ -77,6 +78,188 @@ class TripManager:
                 return None
 
             return self._active_trip.trip_id
+
+    # ---------------------------------------------------------
+    # Apertura explícita
+    # ---------------------------------------------------------
+
+    def ensure_trip(
+        self,
+        *,
+        trip_type: str = "driving",
+        started_at: Optional[datetime] = None,
+    ) -> dict[str, Any]:
+        """
+        Garantiza que exista un viaje activo.
+
+        Se utiliza al comenzar la grabación para poder registrar
+        eventos desde el primer segundo.
+        """
+
+        with self._lock:
+            normalized_type = str(
+                trip_type
+            ).strip().lower()
+
+            if normalized_type not in {
+                "driving",
+                "parking",
+                "event",
+            }:
+                normalized_type = "driving"
+
+            if self._active_trip is None:
+                self._active_trip = TripSession(
+                    self.trips_directory,
+                    trip_type=normalized_type,
+                    started_at=(
+                        started_at
+                        if started_at is not None
+                        else datetime.now()
+                    ),
+                )
+
+                self._active_trip.save()
+
+                logger.info(
+                    "Viaje abierto: %s",
+                    self._active_trip.trip_name,
+                )
+
+            return {
+                "trip_id": (
+                    self._active_trip.trip_id
+                ),
+                "trip_name": (
+                    self._active_trip.trip_name
+                ),
+                "trip_path": str(
+                    self._active_trip.path
+                ),
+            }
+
+    def add_event(
+        self,
+        *,
+        event_type: str,
+        label: str,
+        source: str = "system",
+        severity: str = "info",
+        protected: bool = False,
+        created: Optional[datetime] = None,
+        segment: Optional[str] = None,
+        segment_time: float = 0.0,
+        latitude=None,
+        longitude=None,
+        speed=0.0,
+        data: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """
+        Añade un evento al viaje activo.
+        """
+
+        with self._lock:
+            if self._active_trip is None:
+                self.ensure_trip(
+                    trip_type="driving",
+                    started_at=(
+                        created
+                        if created is not None
+                        else datetime.now()
+                    ),
+                )
+
+            trip = self._active_trip
+
+            event_created = (
+                created
+                if created is not None
+                else datetime.now()
+            )
+
+            trip_time = max(
+                0.0,
+                (
+                    event_created
+                    - trip.started_at
+                ).total_seconds(),
+            )
+
+            gps = None
+
+            try:
+                if (
+                    latitude is not None
+                    and longitude is not None
+                ):
+                    gps = [
+                        round(
+                            float(latitude),
+                            7,
+                        ),
+                        round(
+                            float(longitude),
+                            7,
+                        ),
+                    ]
+            except (
+                TypeError,
+                ValueError,
+            ):
+                gps = None
+
+            event = {
+                "event_id": str(
+                    uuid.uuid4()
+                ),
+                "type": str(
+                    event_type
+                ).strip().lower(),
+                "source": str(
+                    source
+                ).strip().lower(),
+                "created": (
+                    event_created.isoformat()
+                ),
+                "trip_time": trip_time,
+                "segment": segment,
+                "segment_time": segment_time,
+                "label": str(
+                    label
+                ).strip(),
+                "severity": str(
+                    severity
+                ).strip().lower(),
+                "protected": bool(
+                    protected
+                ),
+                "gps": gps,
+                "speed": speed,
+                "data": (
+                    data
+                    if isinstance(
+                        data,
+                        dict,
+                    )
+                    else {}
+                ),
+            }
+
+            stored_event = trip.add_event(
+                event
+            )
+
+            logger.info(
+                "Evento añadido a %s: %s",
+                trip.trip_name,
+                stored_event["type"],
+            )
+
+            return {
+                "trip_id": trip.trip_id,
+                "trip_name": trip.trip_name,
+                "event": stored_event,
+            }
 
     # ---------------------------------------------------------
     # Gestión
