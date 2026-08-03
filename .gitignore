@@ -42,3 +42,7 @@ photos/
 *.trip-header-premium-backup
 *.before-trip-segments-module
 *.before-continuous-trip-player
+
+# Copias temporales de modularización
+*.before-modular-frontend
+*.before-trip-header-module
