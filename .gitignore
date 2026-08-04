@@ -46,3 +46,5 @@ photos/
 # Copias temporales de modularización
 *.before-modular-frontend
 *.before-trip-header-module
+
+*.before-phase-5.5-full

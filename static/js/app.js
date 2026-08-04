@@ -1620,6 +1620,8 @@ function formatTrackTime(seconds) {
 let selectedTrip = null;
 let tripMap = null;
 let tripRouteLayer = null;
+let tripPlaybackMarker = null;
+let tripPlaybackProgressLayer = null;
 
 
 async function initializeTripsBrowser() {
@@ -1979,6 +1981,9 @@ function renderTripDetails(trip) {
                 )}"
                 data-event-id="${escapeHtml(
                     event.event_id || ""
+                )}"
+                data-event-trip-time="${Number(
+                    event.trip_time || 0
                 )}"
                 data-event-segment="${escapeHtml(
                     event.segment || ""
@@ -2879,6 +2884,9 @@ function buildTripTimeline(
                     data-event-id="${escapeHtml(
                         event.event_id || ""
                     )}"
+                    data-event-time="${Number(
+                        event.trip_time || 0
+                    )}"
                     style="left: ${percentage.toFixed(3)}%;"
                     title="${title}"
                     aria-label="${title}"
@@ -3333,7 +3341,10 @@ const continuousTripPlayback = {
     currentIndex: -1,
     player: null,
     endedHandler: null,
-    sourceChangeToken: 0
+    sourceChangeToken: 0,
+    clockUnsubscribe: null,
+    activeEventId: null,
+    lastPhotoEventId: null
 };
 
 
@@ -3380,6 +3391,17 @@ function startContinuousTripPlayback(
         )
     );
     continuousTripPlayback.currentIndex = 0;
+
+    const tripClock = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripClock
+    );
+
+    if (tripClock) {
+        tripClock.configure(
+            continuousTripPlayback.segments
+        );
+    }
 
     popupManager.close();
 
@@ -3497,6 +3519,28 @@ function prepareContinuousTripInterface() {
                 <small id="continuousTripProgress">
                     Preparando reproducción…
                 </small>
+
+                <div class="continuous-trip-clock">
+                    <strong id="continuousTripGlobalTime">
+                        00:00
+                    </strong>
+
+                    <span>/</span>
+
+                    <strong id="continuousTripTotalTime">
+                        00:00
+                    </strong>
+                </div>
+
+                <div
+                    class="continuous-trip-clock-track"
+                    id="continuousTripSeekTrack"
+                    title="Moverse por el viaje"
+                >
+                    <span
+                        id="continuousTripClockProgress"
+                    ></span>
+                </div>
             </div>
 
             <div class="continuous-trip-controls">
@@ -3591,7 +3635,417 @@ function prepareContinuousTripInterface() {
         player
     );
 
+    bindContinuousTripClock();
+
     updateContinuousTripInterface();
+}
+
+
+function bindContinuousTripClock() {
+    const tripClock = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripClock
+    );
+
+    if (!tripClock) {
+        console.error(
+            "El módulo Trip Clock no está disponible."
+        );
+
+        return;
+    }
+
+    if (
+        continuousTripPlayback.clockUnsubscribe
+    ) {
+        continuousTripPlayback.clockUnsubscribe();
+    }
+
+    continuousTripPlayback.clockUnsubscribe = (
+        tripClock.subscribe(
+            (clock) => {
+                updateContinuousTripClockUi(
+                    clock
+                );
+
+                updateContinuousTripTimeline(
+                    clock
+                );
+
+                updateContinuousTripEvents(
+                    clock
+                );
+
+                updateContinuousTripPhotos(
+                    clock
+                );
+
+                updateContinuousTripMap(
+                    clock
+                );
+            }
+        )
+    );
+
+    const seekTrack = document.getElementById(
+        "continuousTripSeekTrack"
+    );
+
+    if (seekTrack) {
+        seekTrack.onclick = (event) => {
+            const rect = seekTrack.getBoundingClientRect();
+
+            const ratio = Math.max(
+                0,
+                Math.min(
+                    1,
+                    (
+                        event.clientX - rect.left
+                    ) / rect.width
+                )
+            );
+
+            seekContinuousTripGlobal(
+                ratio
+                * tripClock.totalDuration()
+            );
+        };
+    }
+}
+
+
+function updateContinuousTripClockUi(
+    clock
+) {
+    const currentElement = document.getElementById(
+        "continuousTripGlobalTime"
+    );
+
+    const totalElement = document.getElementById(
+        "continuousTripTotalTime"
+    );
+
+    const progressElement = document.getElementById(
+        "continuousTripClockProgress"
+    );
+
+    if (currentElement) {
+        currentElement.textContent = (
+            formatTimelineDuration(
+                clock.currentTime
+            )
+        );
+    }
+
+    if (totalElement) {
+        totalElement.textContent = (
+            formatTimelineDuration(
+                clock.totalDuration
+            )
+        );
+    }
+
+    if (progressElement) {
+        progressElement.style.width = (
+            `${(
+                clock.progress * 100
+            ).toFixed(3)}%`
+        );
+    }
+}
+
+
+function updateContinuousTripTimeline(
+    clock
+) {
+    const progress = document.querySelector(
+        ".timeline-progress"
+    );
+
+    if (progress) {
+        progress.style.width = (
+            `${(
+                clock.progress * 100
+            ).toFixed(3)}%`
+        );
+    }
+
+    document.querySelectorAll(
+        ".timeline-event"
+    ).forEach((marker) => {
+        const eventTime = Number(
+            marker.dataset.eventTime || 0
+        );
+
+        marker.classList.toggle(
+            "timeline-event-passed",
+            eventTime <= clock.currentTime
+        );
+
+        marker.classList.toggle(
+            "timeline-event-active",
+            Math.abs(
+                eventTime - clock.currentTime
+            ) <= 1.2
+        );
+    });
+}
+
+
+function updateContinuousTripEvents(
+    clock
+) {
+    const events = (
+        Array.isArray(selectedTrip?.events)
+        ? selectedTrip.events
+        : []
+    );
+
+    let nearest = null;
+    let nearestDistance = Infinity;
+
+    for (const event of events) {
+        const distance = Math.abs(
+            Number(event.trip_time || 0)
+            - clock.currentTime
+        );
+
+        if (distance < nearestDistance) {
+            nearest = event;
+            nearestDistance = distance;
+        }
+    }
+
+    const activeId = (
+        nearest
+        && nearestDistance <= 1.2
+        ? nearest.event_id
+        : null
+    );
+
+    continuousTripPlayback.activeEventId = activeId;
+
+    document.querySelectorAll(
+        ".trip-event"
+    ).forEach((button) => {
+        button.classList.toggle(
+            "trip-event-active",
+            button.dataset.eventId === activeId
+        );
+
+        button.classList.toggle(
+            "trip-event-passed",
+            Number(
+                button.dataset.eventTripTime || 0
+            ) <= clock.currentTime
+        );
+    });
+}
+
+
+function updateContinuousTripPhotos(
+    clock
+) {
+    const photoEvents = (
+        Array.isArray(selectedTrip?.events)
+        ? selectedTrip.events.filter(
+            event => event.type === "photo"
+        )
+        : []
+    );
+
+    let activePhoto = null;
+
+    for (const event of photoEvents) {
+        if (
+            Math.abs(
+                Number(event.trip_time || 0)
+                - clock.currentTime
+            ) <= 1.2
+        ) {
+            activePhoto = event;
+            break;
+        }
+    }
+
+    document.querySelectorAll(
+        ".trip-event[data-event-type='photo']"
+    ).forEach((button) => {
+        button.classList.toggle(
+            "trip-photo-active",
+            Boolean(
+                activePhoto
+                && button.dataset.eventId
+                === activePhoto.event_id
+            )
+        );
+    });
+
+    continuousTripPlayback.lastPhotoEventId = (
+        activePhoto?.event_id || null
+    );
+}
+
+
+function updateContinuousTripMap(
+    clock
+) {
+    if (
+        !selectedTrip
+        || !Array.isArray(selectedTrip.route)
+        || !selectedTrip.route.length
+        || !tripMap
+    ) {
+        return;
+    }
+
+    const route = selectedTrip.route;
+
+    const position = interpolateTrackPosition(
+        route,
+        clock.currentTime
+    );
+
+    if (!position) {
+        return;
+    }
+
+    ensureTripPlaybackMarker();
+
+    if (tripPlaybackMarker) {
+        tripPlaybackMarker.setLatLng(
+            [
+                position.lat,
+                position.lon
+            ]
+        );
+
+        tripPlaybackMarker.setTooltipContent(
+            `${formatTimelineDuration(
+                clock.currentTime
+            )}`
+            + ` · ${position.speed.toFixed(1)} km/h`
+        );
+    }
+
+    const progressed = route
+        .filter(
+            point => Number(point.time || 0)
+            <= clock.currentTime
+        )
+        .map(
+            point => [
+                Number(point.lat),
+                Number(point.lon)
+            ]
+        );
+
+    progressed.push(
+        [
+            position.lat,
+            position.lon
+        ]
+    );
+
+    if (tripPlaybackProgressLayer) {
+        tripPlaybackProgressLayer.setLatLngs(
+            progressed
+        );
+    }
+}
+
+
+function ensureTripPlaybackMarker() {
+    if (!tripMap || typeof L === "undefined") {
+        return;
+    }
+
+    if (!tripPlaybackProgressLayer) {
+        tripPlaybackProgressLayer = L.polyline(
+            [],
+            {
+                weight: 7,
+                opacity: 0.95,
+                lineCap: "round",
+                lineJoin: "round"
+            }
+        ).addTo(
+            tripMap
+        );
+    }
+
+    if (!tripPlaybackMarker) {
+        const icon = L.divIcon(
+            {
+                className:
+                    "roadeye-trip-playback-marker-wrap",
+                html: `
+                    <span class="roadeye-trip-playback-marker">
+                        ●
+                    </span>
+                `,
+                iconSize: [34, 34],
+                iconAnchor: [17, 17],
+                tooltipAnchor: [0, -18]
+            }
+        );
+
+        tripPlaybackMarker = L.marker(
+            [0, 0],
+            {
+                icon,
+                zIndexOffset: 1500
+            }
+        ).addTo(
+            tripMap
+        );
+
+        tripPlaybackMarker.bindTooltip(
+            "Posición del viaje",
+            {
+                direction: "top",
+                offset: [0, -18]
+            }
+        );
+    }
+}
+
+
+function seekContinuousTripGlobal(
+    globalTime
+) {
+    const tripClock = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripClock
+    );
+
+    if (!tripClock) {
+        return;
+    }
+
+    const target = tripClock.seekGlobal(
+        globalTime
+    );
+
+    if (
+        target.index
+        !== continuousTripPlayback.currentIndex
+    ) {
+        playContinuousTripSegment(
+            target.index,
+            target.segmentTime
+        );
+
+        return;
+    }
+
+    const player = document.getElementById(
+        "videoPlayer"
+    );
+
+    if (player) {
+        player.currentTime = target.segmentTime;
+    }
 }
 
 
@@ -3642,11 +4096,23 @@ function bindContinuousTripPlayer(
         "ended",
         endedHandler
     );
+
+    const tripClock = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripClock
+    );
+
+    if (tripClock) {
+        tripClock.bindPlayer(
+            player
+        );
+    }
 }
 
 
 function playContinuousTripSegment(
-    index
+    index,
+    initialTime = 0
 ) {
     if (!continuousTripPlayback.active) {
         return;
@@ -3666,6 +4132,18 @@ function playContinuousTripSegment(
     const segment = segments[index];
 
     continuousTripPlayback.currentIndex = index;
+
+    const tripClock = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripClock
+    );
+
+    if (tripClock) {
+        tripClock.setSegment(
+            index
+        );
+    }
+
     continuousTripPlayback.sourceChangeToken += 1;
 
     const currentToken = (
@@ -3680,14 +4158,16 @@ function playContinuousTripSegment(
 
     openVideoForContinuousTrip(
         segment.filename,
-        currentToken
+        currentToken,
+        initialTime
     );
 }
 
 
 function openVideoForContinuousTrip(
     filename,
-    token
+    token,
+    initialTime = 0
 ) {
     const target = Array.from(
         document.querySelectorAll(
@@ -3735,7 +4215,26 @@ function openVideoForContinuousTrip(
                 player
             );
 
+            const applyInitialTime = () => {
+                const safeTime = Math.max(
+                    0,
+                    Number(initialTime) || 0
+                );
+
+                if (safeTime > 0) {
+                    try {
+                        player.currentTime = safeTime;
+                    } catch (error) {
+                        console.warn(
+                            "No se pudo posicionar el vídeo:",
+                            error
+                        );
+                    }
+                }
+            };
+
             const playWhenReady = () => {
+                applyInitialTime();
                 if (
                     !continuousTripPlayback.active
                     || token
@@ -3936,6 +4435,41 @@ function stopContinuousTripPlayback(
     continuousTripPlayback.player = null;
     continuousTripPlayback.endedHandler = null;
     continuousTripPlayback.sourceChangeToken += 1;
+
+    if (
+        continuousTripPlayback.clockUnsubscribe
+    ) {
+        continuousTripPlayback.clockUnsubscribe();
+        continuousTripPlayback.clockUnsubscribe = null;
+    }
+
+    const tripClock = (
+        window.RoadEyeMedia
+        && window.RoadEyeMedia.tripClock
+    );
+
+    if (tripClock) {
+        tripClock.reset();
+    }
+
+    if (tripPlaybackMarker && tripMap) {
+        tripMap.removeLayer(
+            tripPlaybackMarker
+        );
+
+        tripPlaybackMarker = null;
+    }
+
+    if (
+        tripPlaybackProgressLayer
+        && tripMap
+    ) {
+        tripMap.removeLayer(
+            tripPlaybackProgressLayer
+        );
+
+        tripPlaybackProgressLayer = null;
+    }
 
     if (closePlayer) {
         popupManager.close();
