@@ -1,0 +1,123 @@
+"use strict";
+
+import {
+    setContent
+} from "./ui.js";
+
+
+export function renderParking(
+    parking
+) {
+    setContent(`
+        <div class="settings-grid">
+            <article class="settings-card">
+                <span class="eyebrow">
+                    Vigilancia estacionado
+                </span>
+
+                <h2>Modo Parking</h2>
+
+                <div class="data-list">
+                    <div class="data-row">
+                        <span>Estado</span>
+
+                        <strong>
+                            ${
+                                parking.enabled
+                                ? "Activado"
+                                : "Desactivado"
+                            }
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Detección</span>
+
+                        <strong>
+                            ${
+                                parking.trigger
+                                || "motion_or_impact"
+                            }
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Sensibilidad</span>
+
+                        <strong>
+                            ${
+                                parking
+                                .motion_sensitivity ?? "--"
+                            }
+                        </strong>
+                    </div>
+                </div>
+            </article>
+
+            <article class="settings-card">
+                <span class="eyebrow">
+                    Tiempos configurables
+                </span>
+
+                <h2>Grabación del evento</h2>
+
+                <div class="data-list">
+                    <div class="data-row">
+                        <span>Segundos anteriores</span>
+
+                        <strong>
+                            ${
+                                parking
+                                .pre_event_seconds ?? "--"
+                            } s
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Duración inicial</span>
+
+                        <strong>
+                            ${
+                                parking
+                                .record_seconds ?? "--"
+                            } s
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Extensión</span>
+
+                        <strong>
+                            ${
+                                parking
+                                .extend_seconds ?? "--"
+                            } s
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Duración máxima</span>
+
+                        <strong>
+                            ${
+                                parking
+                                .max_event_seconds ?? "--"
+                            } s
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Espera entre eventos</span>
+
+                        <strong>
+                            ${
+                                parking
+                                .cooldown_seconds ?? "--"
+                            } s
+                        </strong>
+                    </div>
+                </div>
+            </article>
+        </div>
+    `);
+}

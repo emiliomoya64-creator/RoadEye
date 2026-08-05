@@ -1,0 +1,426 @@
+"use strict";
+
+import {
+    fetchSettings,
+    fetchStorageStatus,
+    saveSettings,
+    runStorageCleanup
+} from "./modules/api.js";
+
+import {
+    setConnection,
+    showMessage
+} from "./modules/ui.js";
+
+import {
+    renderOverview
+} from "./modules/overview.js";
+
+import {
+    renderStorage
+} from "./modules/storage.js";
+
+import {
+    renderRecording
+} from "./modules/recording.js";
+
+import {
+    renderParking
+} from "./modules/parking.js";
+
+
+const state = {
+    settings: {},
+    storage: {},
+    activeSection: "overview",
+    dirty: false
+};
+
+
+const titles = {
+    overview: "Resumen",
+    storage: "Almacenamiento",
+    recording: "Grabación",
+    parking: "Modo Parking"
+};
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    initialize
+);
+
+
+async function initialize() {
+    bindNavigation();
+    bindSaveButton();
+
+    await reloadData();
+}
+
+
+async function reloadData() {
+    try {
+        const [
+            settingsResponse,
+            storageResponse
+        ] = await Promise.all(
+            [
+                fetchSettings(),
+                fetchStorageStatus()
+            ]
+        );
+
+        state.settings = (
+            settingsResponse.settings || {}
+        );
+
+        state.storage = (
+            storageResponse.storage || {}
+        );
+
+        state.dirty = false;
+
+        setConnection(true);
+        updateSaveState();
+        renderActiveSection();
+
+    } catch (error) {
+        setConnection(false);
+
+        showMessage(
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+function bindNavigation() {
+    document.querySelectorAll(
+        ".nav-button[data-section]"
+    ).forEach((button) => {
+        button.addEventListener(
+            "click",
+            () => {
+                state.activeSection = (
+                    button.dataset.section
+                );
+
+                document.querySelectorAll(
+                    ".nav-button[data-section]"
+                ).forEach((item) => {
+                    item.classList.toggle(
+                        "active",
+                        item === button
+                    );
+                });
+
+                renderActiveSection();
+            }
+        );
+    });
+}
+
+
+function bindSaveButton() {
+    document.getElementById(
+        "saveSettings"
+    ).addEventListener(
+        "click",
+        saveCurrentSettings
+    );
+}
+
+
+function renderActiveSection() {
+    document.getElementById(
+        "sectionTitle"
+    ).textContent = (
+        titles[state.activeSection]
+        || "RoadEye"
+    );
+
+    if (state.activeSection === "storage") {
+        renderStorage(
+            state.storage,
+            state.settings.storage || {}
+        );
+
+    } else if (
+        state.activeSection === "recording"
+    ) {
+        renderRecording(
+            state.settings.recording || {}
+        );
+
+    } else if (
+        state.activeSection === "parking"
+    ) {
+        renderParking(
+            state.settings.parking || {}
+        );
+
+    } else {
+        renderOverview(
+            state.settings,
+            state.storage
+        );
+    }
+
+    bindEditableFields();
+    bindStorageActions();
+}
+
+
+function bindEditableFields() {
+    document.querySelectorAll(
+        "[data-setting]"
+    ).forEach((element) => {
+        element.addEventListener(
+            "change",
+            () => {
+                state.dirty = true;
+                updateSaveState();
+            }
+        );
+    });
+}
+
+
+function bindStorageActions() {
+    const simulateButton = document.getElementById(
+        "simulateCleanup"
+    );
+
+    const cleanupButton = document.getElementById(
+        "runCleanup"
+    );
+
+    if (simulateButton) {
+        simulateButton.addEventListener(
+            "click",
+            () => executeCleanup(true)
+        );
+    }
+
+    if (cleanupButton) {
+        cleanupButton.addEventListener(
+            "click",
+            () => executeCleanup(false)
+        );
+    }
+}
+
+
+function updateSaveState() {
+    const status = document.getElementById(
+        "saveStatus"
+    );
+
+    const button = document.getElementById(
+        "saveSettings"
+    );
+
+    status.textContent = (
+        state.dirty
+        ? "Cambios sin guardar"
+        : "Configuración cargada"
+    );
+
+    button.disabled = !state.dirty;
+}
+
+
+function readFieldValue(
+    element
+) {
+    if (element.type === "checkbox") {
+        return element.checked;
+    }
+
+    if (element.type === "number") {
+        return Number(element.value);
+    }
+
+    return element.value;
+}
+
+
+function collectSectionValues() {
+    const result = {
+        storage: {
+            ...(state.settings.storage || {})
+        },
+
+        recording: {
+            ...(state.settings.recording || {})
+        },
+
+        parking: {
+            ...(state.settings.parking || {})
+        }
+    };
+
+    document.querySelectorAll(
+        "[data-setting]"
+    ).forEach((element) => {
+        const path = element.dataset.setting;
+
+        const [
+            section,
+            key
+        ] = path.split(".");
+
+        if (
+            !section
+            || !key
+            || !result[section]
+        ) {
+            return;
+        }
+
+        result[section][key] = (
+            readFieldValue(element)
+        );
+    });
+
+    return result;
+}
+
+
+async function saveCurrentSettings() {
+    const button = document.getElementById(
+        "saveSettings"
+    );
+
+    button.disabled = true;
+    button.textContent = "Guardando…";
+
+    try {
+        const newSettings = collectSectionValues();
+
+        const response = await saveSettings(
+            newSettings
+        );
+
+        state.settings = (
+            response.settings
+            || newSettings
+        );
+
+        state.dirty = false;
+
+        updateSaveState();
+
+        showMessage(
+            response.message
+            || (
+                "Configuración guardada. "
+                + "Reinicia RoadEye para aplicar "
+                + "todos los cambios."
+            ),
+            "success"
+        );
+
+        if (
+            state.activeSection === "overview"
+        ) {
+            renderActiveSection();
+        }
+
+    } catch (error) {
+        state.dirty = true;
+        updateSaveState();
+
+        showMessage(
+            error.message,
+            "error"
+        );
+
+    } finally {
+        button.textContent = "Guardar cambios";
+        button.disabled = !state.dirty;
+    }
+}
+
+
+async function executeCleanup(
+    dryRun
+) {
+    const output = document.getElementById(
+        "cleanupResult"
+    );
+
+    if (!output) {
+        return;
+    }
+
+    output.classList.remove(
+        "hidden"
+    );
+
+    output.textContent = (
+        dryRun
+        ? "Simulando limpieza…"
+        : "Ejecutando limpieza…"
+    );
+
+    try {
+        const response = await runStorageCleanup(
+            {
+                force: dryRun,
+                dry_run: dryRun
+            }
+        );
+
+        const result = response.result || {};
+
+        output.textContent = [
+            dryRun
+                ? "SIMULACIÓN COMPLETADA"
+                : "LIMPIEZA COMPLETADA",
+
+            "",
+
+            `Vídeos seleccionados: ${
+                (result.deleted || []).length
+            }`,
+
+            `Protegidos respetados: ${
+                result.skipped_protected || 0
+            }`,
+
+            `Espacio: ${
+                result.freed || "0 B"
+            }`,
+
+            `Viajes actualizados: ${
+                (result.trips_updated || []).length
+            }`,
+
+            `Viajes eliminados: ${
+                (result.trips_removed || []).length
+            }`,
+
+            "",
+
+            dryRun
+                ? "No se ha eliminado ningún archivo."
+                : "Operación finalizada."
+        ].join("\n");
+
+        const storageResponse = (
+            await fetchStorageStatus()
+        );
+
+        state.storage = (
+            storageResponse.storage || {}
+        );
+
+    } catch (error) {
+        output.textContent = (
+            `ERROR\n\n${error.message}`
+        );
+    }
+}

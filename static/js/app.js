@@ -136,12 +136,12 @@ class PopupManager {
         if (name === "settings") {
             return {
                 eyebrow: "Personalización",
-                title: "Configuración de RoadEye",
+                title: "RoadEye Control Center",
                 content: `
                     <iframe
                         class="popup-frame"
-                        src="/settings"
-                        title="Configuración del HUD"
+                        src="/static/control-center/index.html"
+                        title="RoadEye Control Center"
                     ></iframe>
                 `
             };

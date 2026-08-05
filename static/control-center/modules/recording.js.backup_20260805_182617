@@ -1,0 +1,55 @@
+"use strict";
+
+import {
+    setContent
+} from "./ui.js";
+
+
+export function renderRecording(
+    recording
+) {
+    setContent(`
+        <article class="settings-card">
+            <span class="eyebrow">
+                Cámara principal
+            </span>
+
+            <h2>Grabación</h2>
+
+            <div class="data-list">
+                <div class="data-row">
+                    <span>Grabar al iniciar</span>
+
+                    <strong>
+                        ${
+                            recording.enabled
+                            ? "Sí"
+                            : "No"
+                        }
+                    </strong>
+                </div>
+
+                <div class="data-row">
+                    <span>Duración por segmento</span>
+
+                    <strong>
+                        ${
+                            recording
+                            .segment_seconds ?? "--"
+                        } segundos
+                    </strong>
+                </div>
+
+                <div class="data-row">
+                    <span>Imágenes por segundo</span>
+
+                    <strong>
+                        ${
+                            recording.fps ?? "--"
+                        } FPS
+                    </strong>
+                </div>
+            </div>
+        </article>
+    `);
+}

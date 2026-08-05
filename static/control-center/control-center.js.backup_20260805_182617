@@ -1,0 +1,151 @@
+"use strict";
+
+import {
+    fetchSettings,
+    fetchStorageStatus
+} from "./modules/api.js";
+
+import {
+    setConnection,
+    showError
+} from "./modules/ui.js";
+
+import {
+    renderOverview
+} from "./modules/overview.js";
+
+import {
+    renderStorage
+} from "./modules/storage.js";
+
+import {
+    renderRecording
+} from "./modules/recording.js";
+
+import {
+    renderParking
+} from "./modules/parking.js";
+
+
+const state = {
+    settings: {},
+    storage: {},
+    activeSection: "overview"
+};
+
+
+const titles = {
+    overview: "Resumen",
+    storage: "Almacenamiento",
+    recording: "Grabación",
+    parking: "Modo Parking"
+};
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    initialize
+);
+
+
+async function initialize() {
+    bindNavigation();
+
+    try {
+        const [
+            settingsResponse,
+            storageResponse
+        ] = await Promise.all(
+            [
+                fetchSettings(),
+                fetchStorageStatus()
+            ]
+        );
+
+        state.settings = (
+            settingsResponse.settings || {}
+        );
+
+        state.storage = (
+            storageResponse.storage || {}
+        );
+
+        setConnection(true);
+        renderActiveSection();
+
+        document.getElementById(
+            "loadStatus"
+        ).textContent = "Configuración cargada";
+
+    } catch (error) {
+        setConnection(false);
+        showError(error.message);
+    }
+}
+
+
+function bindNavigation() {
+    document.querySelectorAll(
+        ".nav-button[data-section]"
+    ).forEach((button) => {
+        button.addEventListener(
+            "click",
+            () => {
+                state.activeSection = (
+                    button.dataset.section
+                );
+
+                document.querySelectorAll(
+                    ".nav-button[data-section]"
+                ).forEach((item) => {
+                    item.classList.toggle(
+                        "active",
+                        item === button
+                    );
+                });
+
+                renderActiveSection();
+            }
+        );
+    });
+}
+
+
+function renderActiveSection() {
+    document.getElementById(
+        "sectionTitle"
+    ).textContent = (
+        titles[state.activeSection]
+        || "RoadEye"
+    );
+
+    if (state.activeSection === "storage") {
+        renderStorage(
+            state.storage,
+            state.settings.storage || {}
+        );
+
+        return;
+    }
+
+    if (state.activeSection === "recording") {
+        renderRecording(
+            state.settings.recording || {}
+        );
+
+        return;
+    }
+
+    if (state.activeSection === "parking") {
+        renderParking(
+            state.settings.parking || {}
+        );
+
+        return;
+    }
+
+    renderOverview(
+        state.settings,
+        state.storage
+    );
+}

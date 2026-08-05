@@ -1,0 +1,123 @@
+"use strict";
+
+import {
+    formatBytes,
+    setContent
+} from "./ui.js";
+
+
+export function renderStorage(
+    storage,
+    settings
+) {
+    const disk = storage.disk || {};
+
+    setContent(`
+        <div class="settings-grid">
+            <article class="settings-card">
+                <span class="eyebrow">
+                    Estado real
+                </span>
+
+                <h2>SSD principal</h2>
+
+                <div class="data-list">
+                    <div class="data-row">
+                        <span>Uso actual</span>
+
+                        <strong>
+                            ${Number(
+                                disk.used_percent || 0
+                            ).toFixed(2)} %
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Espacio libre</span>
+
+                        <strong>
+                            ${formatBytes(
+                                disk.free_bytes || 0
+                            )}
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Storage Manager</span>
+
+                        <strong>
+                            ${
+                                storage.running
+                                ? "Activo"
+                                : "Detenido"
+                            }
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Carpeta</span>
+
+                        <strong>
+                            ${storage.folder || "--"}
+                        </strong>
+                    </div>
+                </div>
+            </article>
+
+            <article class="settings-card">
+                <span class="eyebrow">
+                    Configuración
+                </span>
+
+                <h2>Límites automáticos</h2>
+
+                <div class="data-list">
+                    <div class="data-row">
+                        <span>Gestión automática</span>
+
+                        <strong>
+                            ${
+                                settings.enabled
+                                ? "Activada"
+                                : "Desactivada"
+                            }
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Uso máximo</span>
+
+                        <strong>
+                            ${
+                                settings
+                                .max_usage_percent ?? "--"
+                            } %
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Reserva mínima</span>
+
+                        <strong>
+                            ${
+                                settings
+                                .minimum_free_gb ?? "--"
+                            } GB
+                        </strong>
+                    </div>
+
+                    <div class="data-row">
+                        <span>Intervalo</span>
+
+                        <strong>
+                            ${
+                                settings
+                                .check_interval_seconds ?? "--"
+                            } s
+                        </strong>
+                    </div>
+                </div>
+            </article>
+        </div>
+    `);
+}

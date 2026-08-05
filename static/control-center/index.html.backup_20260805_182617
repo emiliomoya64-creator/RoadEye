@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>RoadEye Control Center</title>
+
+    <link
+        rel="stylesheet"
+        href="/static/control-center/control-center.css"
+    >
+</head>
+
+<body>
+    <div class="control-shell">
+        <aside class="control-sidebar">
+            <div class="control-brand">
+                <span class="control-logo">R</span>
+
+                <span>
+                    <strong>RoadEye</strong>
+                    <small>Control Center</small>
+                </span>
+            </div>
+
+            <nav class="control-navigation">
+                <button
+                    class="nav-button active"
+                    data-section="overview"
+                    type="button"
+                >
+                    <span>⌂</span>
+                    Resumen
+                </button>
+
+                <button
+                    class="nav-button"
+                    data-section="storage"
+                    type="button"
+                >
+                    <span>▰</span>
+                    Almacenamiento
+                </button>
+
+                <button
+                    class="nav-button"
+                    data-section="recording"
+                    type="button"
+                >
+                    <span>●</span>
+                    Grabación
+                </button>
+
+                <button
+                    class="nav-button"
+                    data-section="parking"
+                    type="button"
+                >
+                    <span>P</span>
+                    Modo Parking
+                </button>
+            </nav>
+
+            <div class="connection-card">
+                <span
+                    id="connectionDot"
+                    class="connection-dot"
+                ></span>
+
+                <span>
+                    <strong id="connectionText">
+                        Conectando…
+                    </strong>
+
+                    <small>RoadEye API</small>
+                </span>
+            </div>
+        </aside>
+
+        <main class="control-main">
+            <header class="control-header">
+                <div>
+                    <span class="eyebrow">
+                        Configuración del dispositivo
+                    </span>
+
+                    <h1 id="sectionTitle">
+                        Resumen
+                    </h1>
+                </div>
+
+                <span
+                    id="loadStatus"
+                    class="load-status"
+                >
+                    Cargando…
+                </span>
+            </header>
+
+            <div
+                id="message"
+                class="message hidden"
+            ></div>
+
+            <section
+                id="controlContent"
+                class="control-content"
+            >
+                <div class="loading-card">
+                    Cargando RoadEye Control Center…
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script
+        type="module"
+        src="/static/control-center/control-center.js"
+    ></script>
+</body>
+</html>
