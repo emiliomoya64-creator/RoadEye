@@ -21,6 +21,7 @@ from trip.trip_manager import trip_manager
 router = APIRouter()
 
 recorder: Optional[RecorderService] = None
+storage_manager = None
 
 
 def _videos_directory() -> Path:
@@ -106,6 +107,45 @@ async def record_start():
             status_code=503,
             detail="RecorderService no está disponible",
         )
+
+    if storage_manager is not None:
+        capacity = storage_manager.ensure_capacity(
+            reason="before_recording",
+        )
+
+        if (
+            not capacity.get(
+                "ok",
+                False,
+            )
+        ):
+            raise HTTPException(
+                status_code=507,
+                detail=(
+                    "No se pudo comprobar "
+                    "el almacenamiento."
+                ),
+            )
+
+        after = capacity.get(
+            "after",
+            {},
+        )
+
+        if bool(
+            after.get(
+                "cleanup_required",
+                False,
+            )
+        ):
+            raise HTTPException(
+                status_code=507,
+                detail=(
+                    "No hay espacio suficiente "
+                    "y no existen vídeos normales "
+                    "que puedan eliminarse."
+                ),
+            )
 
     started = recorder.start_recording()
 
@@ -2129,4 +2169,79 @@ async def video_protection_update(
             if protected
             else "Protección retirada."
         ),
+    }
+
+
+# ============================================================
+# Gestión de almacenamiento
+# ============================================================
+
+@router.get(
+    "/api/storage/status"
+)
+async def storage_status():
+    if storage_manager is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "StorageManager no está disponible."
+            ),
+        )
+
+    return {
+        "ok": True,
+        "storage": storage_manager.status(),
+    }
+
+
+@router.post(
+    "/api/storage/cleanup"
+)
+async def storage_cleanup(
+    payload: dict | None = None,
+):
+    if storage_manager is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "StorageManager no está disponible."
+            ),
+        )
+
+    payload = (
+        payload
+        if isinstance(
+            payload,
+            dict,
+        )
+        else {}
+    )
+
+    result = storage_manager.cleanup(
+        reason="api",
+        force=bool(
+            payload.get(
+                "force",
+                False,
+            )
+        ),
+        dry_run=(
+            bool(
+                payload.get(
+                    "dry_run"
+                )
+            )
+            if "dry_run" in payload
+            else None
+        ),
+    )
+
+    return {
+        "ok": bool(
+            result.get(
+                "ok",
+                False,
+            )
+        ),
+        "result": result,
     }

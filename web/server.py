@@ -15,12 +15,22 @@ import web.api as api
 from core.config_manager import config
 from core.display_buffer import display_buffer
 from core.roadeye_services import roadeye_services
+from core.storage_manager import storage_manager
 
 
 logger = logging.getLogger(__name__)
 
 
 api.recorder = roadeye_services.recorder
+api.storage_manager = storage_manager
+
+storage_manager.set_active_file_provider(
+    lambda: (
+        roadeye_services.recorder
+        .status()
+        .get("current_file")
+    )
+)
 
 
 @asynccontextmanager
@@ -30,6 +40,7 @@ async def lifespan(app: FastAPI):
     )
 
     roadeye_services.start_all()
+    storage_manager.start()
 
     try:
         yield
@@ -39,6 +50,7 @@ async def lifespan(app: FastAPI):
             "Deteniendo RoadEye mediante ServiceManager"
         )
 
+        storage_manager.stop()
         roadeye_services.stop_all()
 
 
