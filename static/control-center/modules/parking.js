@@ -8,13 +8,129 @@ import {
 
 
 export function renderParking(
-    parking
+    parking,
+    runtime = {},
+    history = []
 ) {
+    const stateLabels = {
+        inactive: "Inactivo",
+        watching: "Vigilando",
+        event: "Evento activo"
+    };
+
+    const ratio = (
+        Number(
+            runtime.last_motion_ratio || 0
+        ) * 100
+    );
+
     setContent(`
+        <article class="hero-card">
+            <div>
+                <span class="eyebrow">
+                    RoadEye Sentinel
+                </span>
+
+                <h2 id="sentinelState">
+                    ${
+                        stateLabels[
+                            runtime.state
+                        ] || "Consultando…"
+                    }
+                </h2>
+
+                <p>
+                    Vigilancia visual automática,
+                    grabación inteligente y protección
+                    de eventos.
+                </p>
+            </div>
+
+            <span class="hero-check">
+                ${
+                    runtime.event_active
+                    ? "!"
+                    : "✓"
+                }
+            </span>
+        </article>
+
+        <div class="metric-grid">
+            <article class="metric-card">
+                <span>Estado</span>
+
+                <strong id="parkingLiveState">
+                    ${
+                        stateLabels[
+                            runtime.state
+                        ] || "--"
+                    }
+                </strong>
+
+                <small>
+                    ${
+                        runtime.running
+                        ? "Servicio activo"
+                        : "Servicio detenido"
+                    }
+                </small>
+            </article>
+
+            <article class="metric-card">
+                <span>Movimiento</span>
+
+                <strong id="parkingLiveRatio">
+                    ${ratio.toFixed(2)} %
+                </strong>
+
+                <small>
+                    Sensibilidad:
+                    ${
+                        parking
+                        .motion_sensitivity ?? "--"
+                    }
+                </small>
+            </article>
+
+            <article class="metric-card">
+                <span>Tiempo restante</span>
+
+                <strong id="parkingLiveRemaining">
+                    ${Number(
+                        runtime.event_remaining || 0
+                    ).toFixed(0)} s
+                </strong>
+
+                <small>
+                    ${
+                        runtime.event_active
+                        ? "Grabando evento"
+                        : "Sin evento activo"
+                    }
+                </small>
+            </article>
+
+            <article class="metric-card">
+                <span>Eventos</span>
+
+                <strong id="parkingLiveCount">
+                    ${
+                        runtime.event_count ?? 0
+                    }
+                </strong>
+
+                <small>
+                    ${
+                        runtime.simulated_count ?? 0
+                    } simulados
+                </small>
+            </article>
+        </div>
+
         <div class="settings-grid">
             <article class="settings-card">
                 <span class="eyebrow">
-                    Vigilancia estacionado
+                    Vigilancia
                 </span>
 
                 <h2>Activación</h2>
@@ -26,8 +142,8 @@ export function renderParking(
                         </strong>
 
                         <small>
-                            El motor se instalará en la
-                            siguiente fase.
+                            Detecta movimiento delante
+                            del vehículo.
                         </small>
                     </span>
 
@@ -40,7 +156,7 @@ export function renderParking(
 
                 <label class="form-row">
                     <span>
-                        <strong>Detectar</strong>
+                        <strong>Detección</strong>
                     </span>
 
                     <select
@@ -89,7 +205,8 @@ export function renderParking(
                         <strong>Sensibilidad</strong>
 
                         <small>
-                            De 0,05 a 1,00.
+                            Alta sensibilidad detecta
+                            movimientos más pequeños.
                         </small>
                     </span>
 
@@ -111,65 +228,46 @@ export function renderParking(
 
             <article class="settings-card">
                 <span class="eyebrow">
-                    Tiempos configurables
+                    Grabación inteligente
                 </span>
 
-                <h2>Grabación del evento</h2>
+                <h2>Tiempos</h2>
 
-                ${
-                    numberRow(
-                        "Segundos anteriores",
-                        "parking.pre_event_seconds",
-                        parking.pre_event_seconds ?? 10,
-                        0,
-                        120,
-                        5
-                    )
-                }
+                ${timeField(
+                    "Duración inicial",
+                    "parking.record_seconds",
+                    parking.record_seconds ?? 30,
+                    5,
+                    600,
+                    5
+                )}
 
-                ${
-                    numberRow(
-                        "Duración inicial",
-                        "parking.record_seconds",
-                        parking.record_seconds ?? 30,
-                        5,
-                        600,
-                        5
-                    )
-                }
+                ${timeField(
+                    "Extensión con movimiento",
+                    "parking.extend_seconds",
+                    parking.extend_seconds ?? 15,
+                    0,
+                    300,
+                    5
+                )}
 
-                ${
-                    numberRow(
-                        "Extensión por movimiento",
-                        "parking.extend_seconds",
-                        parking.extend_seconds ?? 15,
-                        0,
-                        300,
-                        5
-                    )
-                }
+                ${timeField(
+                    "Duración máxima",
+                    "parking.max_event_seconds",
+                    parking.max_event_seconds ?? 120,
+                    10,
+                    3600,
+                    10
+                )}
 
-                ${
-                    numberRow(
-                        "Duración máxima",
-                        "parking.max_event_seconds",
-                        parking.max_event_seconds ?? 120,
-                        10,
-                        3600,
-                        10
-                    )
-                }
-
-                ${
-                    numberRow(
-                        "Espera entre eventos",
-                        "parking.cooldown_seconds",
-                        parking.cooldown_seconds ?? 5,
-                        0,
-                        300,
-                        1
-                    )
-                }
+                ${timeField(
+                    "Espera entre eventos",
+                    "parking.cooldown_seconds",
+                    parking.cooldown_seconds ?? 5,
+                    0,
+                    300,
+                    1
+                )}
             </article>
 
             <article class="settings-card">
@@ -177,18 +275,13 @@ export function renderParking(
                     Protección
                 </span>
 
-                <h2>Contenido del evento</h2>
+                <h2>Contenido</h2>
 
                 <label class="form-row">
                     <span>
                         <strong>
-                            Proteger grabaciones
+                            Proteger grabación
                         </strong>
-
-                        <small>
-                            No podrán eliminarse
-                            automáticamente.
-                        </small>
                     </span>
 
                     <input
@@ -197,7 +290,8 @@ export function renderParking(
                             "parking.protect_recording"
                         ${
                             checked(
-                                parking.protect_recording
+                                parking
+                                .protect_recording
                             )
                         }
                     >
@@ -221,13 +315,155 @@ export function renderParking(
                         }
                     >
                 </label>
+
+                <div class="button-row">
+                    <button
+                        id="simulateParking"
+                        class="secondary-button"
+                        type="button"
+                    >
+                        Simular evento
+                    </button>
+                </div>
+
+                <pre
+                    id="parkingSimulationResult"
+                    class="result-box hidden"
+                ></pre>
+            </article>
+
+            <article class="settings-card">
+                <span class="eyebrow">
+                    Historial
+                </span>
+
+                <h2>Eventos recientes</h2>
+
+                <div
+                    id="parkingHistory"
+                    class="data-list"
+                >
+                    ${
+                        renderHistory(
+                            history
+                        )
+                    }
+                </div>
             </article>
         </div>
     `);
 }
 
 
-function numberRow(
+export function updateParkingRuntime(
+    runtime
+) {
+    const stateLabels = {
+        inactive: "Inactivo",
+        watching: "Vigilando",
+        event: "Evento activo"
+    };
+
+    setText(
+        "parkingLiveState",
+        stateLabels[
+            runtime.state
+        ] || "--"
+    );
+
+    setText(
+        "parkingLiveRatio",
+        `${
+            (
+                Number(
+                    runtime
+                    .last_motion_ratio || 0
+                ) * 100
+            ).toFixed(2)
+        } %`
+    );
+
+    setText(
+        "parkingLiveRemaining",
+        `${
+            Number(
+                runtime
+                .event_remaining || 0
+            ).toFixed(0)
+        } s`
+    );
+
+    setText(
+        "parkingLiveCount",
+        String(
+            runtime.event_count ?? 0
+        )
+    );
+
+    setText(
+        "sentinelState",
+        stateLabels[
+            runtime.state
+        ] || "--"
+    );
+}
+
+
+function renderHistory(
+    history
+) {
+    if (!history.length) {
+        return `
+            <div class="data-row">
+                <span>
+                    Sin eventos Parking
+                </span>
+
+                <strong>—</strong>
+            </div>
+        `;
+    }
+
+    return history
+        .slice(0, 10)
+        .map((event) => {
+            const created = event.created
+                ? new Date(
+                    event.created
+                ).toLocaleString(
+                    "es-ES"
+                )
+                : "--";
+
+            return `
+                <div class="data-row">
+                    <span>
+                        ${created}
+
+                        <small>
+                            ${
+                                event.simulation
+                                ? "Simulación"
+                                : "Movimiento"
+                            }
+                        </small>
+                    </span>
+
+                    <strong>
+                        ${
+                            event.protected
+                            ? "Protegido"
+                            : "Normal"
+                        }
+                    </strong>
+                </div>
+            `;
+        })
+        .join("");
+}
+
+
+function timeField(
     label,
     path,
     value,
@@ -255,4 +491,18 @@ function numberRow(
             </span>
         </label>
     `;
+}
+
+
+function setText(
+    id,
+    value
+) {
+    const element = document.getElementById(
+        id
+    );
+
+    if (element) {
+        element.textContent = value;
+    }
 }

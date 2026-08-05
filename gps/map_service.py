@@ -110,8 +110,13 @@ class MapService:
 
         if self._thread is not None:
             self._thread.join(
-                timeout=3.0
+                timeout=1.5
             )
+
+            if self._thread.is_alive():
+                logger.warning(
+                    "MapService no terminó dentro del plazo."
+                )
 
         self._thread = None
 
@@ -136,6 +141,9 @@ class MapService:
         latitude: float,
         longitude: float,
     ) -> None:
+        if self._stop_event.is_set():
+            return
+
         try:
             response = self._session.get(
                 self.NOMINATIM_URL,
@@ -146,8 +154,11 @@ class MapService:
                     "zoom": 18,
                     "addressdetails": 1,
                 },
-                timeout=5,
+                timeout=(1.5, 2.0),
             )
+
+            if self._stop_event.is_set():
+                return
 
             if response.status_code != 200:
                 logger.warning(
@@ -211,6 +222,9 @@ class MapService:
         latitude: float,
         longitude: float,
     ) -> None:
+        if self._stop_event.is_set():
+            return
+
         query = f"""
 [out:json][timeout:10];
 
@@ -223,8 +237,11 @@ out tags;
             response = self._session.post(
                 self.OVERPASS_URL,
                 data=query,
-                timeout=10,
+                timeout=(1.5, 3.0),
             )
+
+            if self._stop_event.is_set():
+                return
 
             if response.status_code != 200:
                 logger.warning(

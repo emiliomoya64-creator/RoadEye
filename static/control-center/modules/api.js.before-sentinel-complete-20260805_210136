@@ -49,32 +49,6 @@ export function fetchStorageStatus() {
 }
 
 
-export function fetchParkingStatus() {
-    return requestJson(
-        "/api/parking/status"
-    );
-}
-
-
-export function fetchParkingHistory(
-    limit = 20
-) {
-    return requestJson(
-        `/api/parking/history?limit=${limit}`
-    );
-}
-
-
-export function simulateParkingEvent() {
-    return requestJson(
-        "/api/parking/simulate",
-        {
-            method: "POST"
-        }
-    );
-}
-
-
 export function saveSettings(
     settings
 ) {

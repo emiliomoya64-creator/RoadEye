@@ -214,9 +214,17 @@ class RecorderService:
     # Control de grabación
     # ---------------------------------------------------------
 
-    def start_recording(self) -> bool:
+    def start_recording(
+        self,
+        *,
+        trip_type: str = "driving",
+    ) -> bool:
         """
         Comienza la grabación.
+
+        trip_type permite que servicios especializados,
+        como RoadEye Sentinel, creen viajes Parking sin
+        alterar la grabación normal.
         """
 
         if not self.running:
@@ -231,8 +239,19 @@ class RecorderService:
             return True
 
         # El viaje se abre antes de activar la grabación.
+        normalized_trip_type = str(
+            trip_type
+        ).strip().lower()
+
+        if normalized_trip_type not in {
+            "driving",
+            "parking",
+            "event",
+        }:
+            normalized_trip_type = "driving"
+
         trip_manager.ensure_trip(
-            trip_type="driving",
+            trip_type=normalized_trip_type,
             started_at=datetime.now(),
         )
 

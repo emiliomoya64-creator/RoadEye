@@ -3,11 +3,8 @@
 import {
     fetchSettings,
     fetchStorageStatus,
-    fetchParkingStatus,
-    fetchParkingHistory,
     saveSettings,
-    runStorageCleanup,
-    simulateParkingEvent
+    runStorageCleanup
 } from "./modules/api.js";
 
 import {
@@ -28,19 +25,15 @@ import {
 } from "./modules/recording.js";
 
 import {
-    renderParking,
-    updateParkingRuntime
+    renderParking
 } from "./modules/parking.js";
 
 
 const state = {
     settings: {},
     storage: {},
-    parkingRuntime: {},
-    parkingHistory: [],
     activeSection: "overview",
-    dirty: false,
-    parkingTimer: null
+    dirty: false
 };
 
 
@@ -63,8 +56,6 @@ async function initialize() {
     bindSaveButton();
 
     await reloadData();
-
-    startParkingPolling();
 }
 
 
@@ -72,15 +63,11 @@ async function reloadData() {
     try {
         const [
             settingsResponse,
-            storageResponse,
-            parkingResponse,
-            historyResponse
+            storageResponse
         ] = await Promise.all(
             [
                 fetchSettings(),
-                fetchStorageStatus(),
-                fetchParkingStatus(),
-                fetchParkingHistory(20)
+                fetchStorageStatus()
             ]
         );
 
@@ -90,14 +77,6 @@ async function reloadData() {
 
         state.storage = (
             storageResponse.storage || {}
-        );
-
-        state.parkingRuntime = (
-            parkingResponse.parking || {}
-        );
-
-        state.parkingHistory = (
-            historyResponse.events || []
         );
 
         state.dirty = false;
@@ -179,9 +158,7 @@ function renderActiveSection() {
         state.activeSection === "parking"
     ) {
         renderParking(
-            state.settings.parking || {},
-            state.parkingRuntime,
-            state.parkingHistory
+            state.settings.parking || {}
         );
 
     } else {
@@ -194,6 +171,82 @@ function renderActiveSection() {
     bindEditableFields();
     bindStorageActions();
     bindParkingActions();
+}
+
+
+function bindParkingActions() {
+    const button = document.getElementById(
+        "simulateParking"
+    );
+
+    if (!button) {
+        return;
+    }
+
+    button.addEventListener(
+        "click",
+        async () => {
+            const output = document.getElementById(
+                "parkingSimulationResult"
+            );
+
+            output.classList.remove(
+                "hidden"
+            );
+
+            output.textContent = (
+                "Simulando evento Parking…"
+            );
+
+            try {
+                const response = await fetch(
+                    "/api/parking/simulate",
+                    {
+                        method: "POST"
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail
+                        || "No se pudo simular."
+                    );
+                }
+
+                const parking = data.parking || {};
+
+                output.textContent = [
+                    "EVENTO SENTINEL INICIADO",
+                    "",
+                    `Estado: ${parking.state}`,
+                    `Evento activo: ${
+                        parking.event_active
+                        ? "Sí"
+                        : "No"
+                    }`,
+                    `Duración inicial: ${
+                        parking.settings
+                        ?.record_seconds ?? "--"
+                    } s`,
+                    `Protección: ${
+                        parking.settings
+                        ?.protect_recording
+                        ? "Sí"
+                        : "No"
+                    }`,
+                    "",
+                    "RoadEye está grabando el evento."
+                ].join("\n");
+
+            } catch (error) {
+                output.textContent = (
+                    `ERROR\n\n${error.message}`
+                );
+            }
+        }
+    );
 }
 
 
@@ -233,114 +286,6 @@ function bindStorageActions() {
             "click",
             () => executeCleanup(false)
         );
-    }
-}
-
-
-function bindParkingActions() {
-    const button = document.getElementById(
-        "simulateParking"
-    );
-
-    if (!button) {
-        return;
-    }
-
-    button.addEventListener(
-        "click",
-        async () => {
-            const output = document.getElementById(
-                "parkingSimulationResult"
-            );
-
-            output.classList.remove(
-                "hidden"
-            );
-
-            output.textContent = (
-                "Simulando evento Parking…"
-            );
-
-            try {
-                const response = (
-                    await simulateParkingEvent()
-                );
-
-                state.parkingRuntime = (
-                    response.parking || {}
-                );
-
-                updateParkingRuntime(
-                    state.parkingRuntime
-                );
-
-                output.textContent = [
-                    "EVENTO SENTINEL INICIADO",
-                    "",
-                    `Estado: ${
-                        state.parkingRuntime.state
-                    }`,
-                    `Evento activo: ${
-                        state.parkingRuntime
-                        .event_active
-                        ? "Sí"
-                        : "No"
-                    }`,
-                    `Duración: ${
-                        state.parkingRuntime
-                        .settings
-                        ?.record_seconds ?? "--"
-                    } s`,
-                    "",
-                    "La grabación y protección "
-                    + "se están ejecutando."
-                ].join("\n");
-
-            } catch (error) {
-                output.textContent = (
-                    `ERROR\n\n${error.message}`
-                );
-            }
-        }
-    );
-}
-
-
-function startParkingPolling() {
-    if (state.parkingTimer) {
-        clearInterval(
-            state.parkingTimer
-        );
-    }
-
-    state.parkingTimer = setInterval(
-        refreshParkingRuntime,
-        1000
-    );
-}
-
-
-async function refreshParkingRuntime() {
-    try {
-        const response = (
-            await fetchParkingStatus()
-        );
-
-        state.parkingRuntime = (
-            response.parking || {}
-        );
-
-        if (
-            state.activeSection
-            === "parking"
-        ) {
-            updateParkingRuntime(
-                state.parkingRuntime
-            );
-        }
-
-    } catch {
-        // La carga principal mostrará errores.
     }
 }
 
@@ -397,24 +342,24 @@ function collectSectionValues() {
     document.querySelectorAll(
         "[data-setting]"
     ).forEach((element) => {
+        const path = element.dataset.setting;
+
         const [
             section,
             key
-        ] = element.dataset.setting.split(
-            "."
-        );
+        ] = path.split(".");
 
         if (
-            section
-            && key
-            && result[section]
+            !section
+            || !key
+            || !result[section]
         ) {
-            result[section][key] = (
-                readFieldValue(
-                    element
-                )
-            );
+            return;
         }
+
+        result[section][key] = (
+            readFieldValue(element)
+        );
     });
 
     return result;
@@ -430,9 +375,7 @@ async function saveCurrentSettings() {
     button.textContent = "Guardando…";
 
     try {
-        const newSettings = (
-            collectSectionValues()
-        );
+        const newSettings = collectSectionValues();
 
         const response = await saveSettings(
             newSettings
@@ -457,9 +400,14 @@ async function saveCurrentSettings() {
             "success"
         );
 
+        if (
+            state.activeSection === "overview"
+        ) {
+            renderActiveSection();
+        }
+
     } catch (error) {
         state.dirty = true;
-
         updateSaveState();
 
         showMessage(
@@ -468,10 +416,7 @@ async function saveCurrentSettings() {
         );
 
     } finally {
-        button.textContent = (
-            "Guardar cambios"
-        );
-
+        button.textContent = "Guardar cambios";
         button.disabled = !state.dirty;
     }
 }
@@ -499,19 +444,55 @@ async function executeCleanup(
     );
 
     try {
-        const response = (
-            await runStorageCleanup(
-                {
-                    force: dryRun,
-                    dry_run: dryRun
-                }
-            )
+        const response = await runStorageCleanup(
+            {
+                force: dryRun,
+                dry_run: dryRun
+            }
         );
 
-        output.textContent = JSON.stringify(
-            response.result || {},
-            null,
-            2
+        const result = response.result || {};
+
+        output.textContent = [
+            dryRun
+                ? "SIMULACIÓN COMPLETADA"
+                : "LIMPIEZA COMPLETADA",
+
+            "",
+
+            `Vídeos seleccionados: ${
+                (result.deleted || []).length
+            }`,
+
+            `Protegidos respetados: ${
+                result.skipped_protected || 0
+            }`,
+
+            `Espacio: ${
+                result.freed || "0 B"
+            }`,
+
+            `Viajes actualizados: ${
+                (result.trips_updated || []).length
+            }`,
+
+            `Viajes eliminados: ${
+                (result.trips_removed || []).length
+            }`,
+
+            "",
+
+            dryRun
+                ? "No se ha eliminado ningún archivo."
+                : "Operación finalizada."
+        ].join("\n");
+
+        const storageResponse = (
+            await fetchStorageStatus()
+        );
+
+        state.storage = (
+            storageResponse.storage || {}
         );
 
     } catch (error) {

@@ -12,6 +12,7 @@ from display.hdmi_display_service import (
 from gps.gps_service import GPSService
 from gps.map_service import MapService
 from recorder.recorder_service import RecorderService
+from core.parking_service import ParkingService
 from startup.startup_service import startup_service
 
 
@@ -50,6 +51,9 @@ class RoadEyeServices:
         self.maps = MapService()
         self.render = render_service
         self.recorder = RecorderService()
+        self.parking = ParkingService(
+            self.recorder
+        )
 
         self._register_services()
 
@@ -147,6 +151,15 @@ class RoadEyeServices:
             start_order=70,
         )
 
+        self.manager.register(
+            "parking",
+            self.parking,
+            description="RoadEye Sentinel",
+            enabled=True,
+            critical=False,
+            start_order=80,
+        )
+
     def start_all(self) -> bool:
         logger.info(
             "Arrancando servicios principales de RoadEye"
@@ -183,6 +196,10 @@ class RoadEyeServices:
 
         summary["recorder"] = (
             self.recorder.status()
+        )
+
+        summary["parking"] = (
+            self.parking.status()
         )
 
         return summary

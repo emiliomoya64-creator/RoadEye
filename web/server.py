@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 api.recorder = roadeye_services.recorder
 api.storage_manager = storage_manager
+api.parking_service = roadeye_services.parking
 
 storage_manager.set_active_file_provider(
     lambda: (

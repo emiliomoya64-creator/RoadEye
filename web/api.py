@@ -2752,3 +2752,226 @@ async def settings_update(
             "todos los cambios."
         ),
     }
+# ============================================================
+# RoadEye Sentinel · Modo Parking
+# ============================================================
+
+parking_service = None
+
+
+@router.get(
+    "/api/parking/status"
+)
+async def parking_status():
+    if parking_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="ParkingService no está disponible.",
+        )
+
+    return {
+        "ok": True,
+        "parking": parking_service.status(),
+    }
+
+
+@router.post(
+    "/api/parking/activate"
+)
+async def parking_activate():
+    if parking_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="ParkingService no está disponible.",
+        )
+
+    return {
+        "ok": True,
+        "parking": parking_service.activate(),
+    }
+
+
+@router.post(
+    "/api/parking/deactivate"
+)
+async def parking_deactivate():
+    if parking_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="ParkingService no está disponible.",
+        )
+
+    return {
+        "ok": True,
+        "parking": parking_service.deactivate(),
+    }
+
+
+@router.post(
+    "/api/parking/simulate"
+)
+async def parking_simulate():
+    if parking_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="ParkingService no está disponible.",
+        )
+
+    return {
+        "ok": True,
+        "message": "Evento Parking simulado.",
+        "parking": parking_service.simulate_event(),
+    }
+# ============================================================
+# RoadEye Sentinel · Historial Parking
+# ============================================================
+
+@router.get(
+    "/api/parking/history"
+)
+async def parking_history(
+    limit: int = 20,
+):
+    safe_limit = max(
+        1,
+        min(
+            100,
+            int(limit),
+        ),
+    )
+
+    trips_directory = (
+        PROJECT_DIR / "trips"
+    )
+
+    history = []
+
+    if trips_directory.exists():
+        paths = sorted(
+            trips_directory.glob(
+                "trip_*.json"
+            ),
+            key=lambda item: (
+                item.stat().st_mtime
+            ),
+            reverse=True,
+        )
+
+        for path in paths:
+            try:
+                trip = json.loads(
+                    path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+
+            except (
+                OSError,
+                json.JSONDecodeError,
+            ):
+                continue
+
+            if not isinstance(
+                trip,
+                dict,
+            ):
+                continue
+
+            for event in trip.get(
+                "events",
+                [],
+            ):
+                if not isinstance(
+                    event,
+                    dict,
+                ):
+                    continue
+
+                if str(
+                    event.get(
+                        "type",
+                        "",
+                    )
+                ).lower() != "parking":
+                    continue
+
+                data = event.get(
+                    "data",
+                    {},
+                )
+
+                if not isinstance(
+                    data,
+                    dict,
+                ):
+                    data = {}
+
+                history.append(
+                    {
+                        "event_id": event.get(
+                            "event_id"
+                        ),
+                        "created": event.get(
+                            "created"
+                        ),
+                        "label": event.get(
+                            "label",
+                            "Evento Parking",
+                        ),
+                        "source": event.get(
+                            "source"
+                        ),
+                        "protected": bool(
+                            event.get(
+                                "protected",
+                                False,
+                            )
+                        ),
+                        "segment": event.get(
+                            "segment"
+                        ),
+                        "segment_time": event.get(
+                            "segment_time",
+                            0,
+                        ),
+                        "trip_id": trip.get(
+                            "trip_id"
+                        ),
+                        "trip_type": trip.get(
+                            "type"
+                        ),
+                        "motion_ratio": data.get(
+                            "motion_ratio"
+                        ),
+                        "simulation": bool(
+                            data.get(
+                                "simulation",
+                                False,
+                            )
+                        ),
+                        "photo": data.get(
+                            "photo"
+                        ),
+                    }
+                )
+
+    history.sort(
+        key=lambda item: str(
+            item.get(
+                "created",
+                "",
+            )
+        ),
+        reverse=True,
+    )
+
+    return {
+        "ok": True,
+        "count": min(
+            len(history),
+            safe_limit,
+        ),
+        "events": history[
+            :safe_limit
+        ],
+    }
