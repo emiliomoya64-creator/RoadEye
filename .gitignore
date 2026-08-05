@@ -50,3 +50,5 @@ photos/
 *.before-phase-5.5-full
 
 *.before-storage-manager
+
+*.before-control-center

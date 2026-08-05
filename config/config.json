@@ -128,5 +128,17 @@
         "clean_video_orphans": true,
         "delete_empty_trips": true,
         "dry_run": false
+    },
+    "parking": {
+        "enabled": false,
+        "trigger": "motion_or_impact",
+        "pre_event_seconds": 10,
+        "record_seconds": 30,
+        "extend_seconds": 15,
+        "max_event_seconds": 120,
+        "cooldown_seconds": 5,
+        "motion_sensitivity": 0.55,
+        "protect_recording": true,
+        "capture_photo": false
     }
 }

@@ -2245,3 +2245,510 @@ async def storage_cleanup(
         ),
         "result": result,
     }
+
+
+# ============================================================
+# RoadEye Control Center
+# ============================================================
+
+def _settings_config_path() -> Path:
+    return (
+        PROJECT_DIR
+        / "config"
+        / "config.json"
+    ).resolve()
+
+
+def _settings_read_config() -> dict:
+    path = _settings_config_path()
+
+    try:
+        loaded = json.loads(
+            path.read_text(
+                encoding="utf-8"
+            )
+        )
+
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "No se pudo leer la configuración."
+            ),
+        ) from exc
+
+    if not isinstance(
+        loaded,
+        dict,
+    ):
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "El archivo de configuración "
+                "no contiene un objeto válido."
+            ),
+        )
+
+    return loaded
+
+
+def _settings_atomic_write(
+    data: dict,
+) -> None:
+    path = _settings_config_path()
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    backup_path = path.with_suffix(
+        ".json.last-good"
+    )
+
+    if path.exists():
+        try:
+            backup_path.write_bytes(
+                path.read_bytes()
+            )
+        except OSError:
+            logger.warning(
+                "No se pudo crear la copia "
+                "last-good de configuración."
+            )
+
+    temporary_path = path.with_suffix(
+        ".json.tmp"
+    )
+
+    try:
+        temporary_path.write_text(
+            json.dumps(
+                data,
+                indent=4,
+                ensure_ascii=False,
+            ) + "\n",
+            encoding="utf-8",
+        )
+
+        temporary_path.replace(
+            path
+        )
+
+    except OSError as exc:
+        temporary_path.unlink(
+            missing_ok=True
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "No se pudo guardar "
+                "la configuración."
+            ),
+        ) from exc
+
+
+def _settings_number(
+    value,
+    *,
+    minimum: float,
+    maximum: float,
+    field: str,
+    integer: bool = False,
+):
+    try:
+        number = (
+            int(value)
+            if integer
+            else float(value)
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"El valor de {field} "
+                "no es válido."
+            ),
+        ) from exc
+
+    if (
+        number < minimum
+        or number > maximum
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"{field} debe estar entre "
+                f"{minimum} y {maximum}."
+            ),
+        )
+
+    return number
+
+
+def _settings_validate(
+    payload: dict,
+) -> dict:
+    if not isinstance(
+        payload,
+        dict,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Configuración no válida.",
+        )
+
+    storage_raw = payload.get(
+        "storage",
+        {},
+    )
+
+    recording_raw = payload.get(
+        "recording",
+        {},
+    )
+
+    parking_raw = payload.get(
+        "parking",
+        {},
+    )
+
+    for section_name, section in (
+        ("storage", storage_raw),
+        ("recording", recording_raw),
+        ("parking", parking_raw),
+    ):
+        if not isinstance(
+            section,
+            dict,
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"La sección {section_name} "
+                    "no es válida."
+                ),
+            )
+
+    trigger = str(
+        parking_raw.get(
+            "trigger",
+            "motion_or_impact",
+        )
+    ).strip().lower()
+
+    allowed_triggers = {
+        "motion",
+        "impact",
+        "motion_or_impact",
+    }
+
+    if trigger not in allowed_triggers:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "El disparador de Parking "
+                "no es válido."
+            ),
+        )
+
+    return {
+        "storage": {
+            "enabled": bool(
+                storage_raw.get(
+                    "enabled",
+                    True,
+                )
+            ),
+            "max_usage_percent": (
+                _settings_number(
+                    storage_raw.get(
+                        "max_usage_percent",
+                        85,
+                    ),
+                    minimum=40,
+                    maximum=98,
+                    field=(
+                        "Uso máximo del disco"
+                    ),
+                )
+            ),
+            "minimum_free_gb": (
+                _settings_number(
+                    storage_raw.get(
+                        "minimum_free_gb",
+                        10,
+                    ),
+                    minimum=1,
+                    maximum=500,
+                    field=(
+                        "Espacio libre mínimo"
+                    ),
+                )
+            ),
+            "check_interval_seconds": (
+                _settings_number(
+                    storage_raw.get(
+                        "check_interval_seconds",
+                        60,
+                    ),
+                    minimum=10,
+                    maximum=86400,
+                    field=(
+                        "Intervalo de comprobación"
+                    ),
+                    integer=True,
+                )
+            ),
+            "clean_on_start": bool(
+                storage_raw.get(
+                    "clean_on_start",
+                    True,
+                )
+            ),
+            "clean_before_recording": bool(
+                storage_raw.get(
+                    "clean_before_recording",
+                    True,
+                )
+            ),
+            "delete_oldest_normal": bool(
+                storage_raw.get(
+                    "delete_oldest_normal",
+                    True,
+                )
+            ),
+            "never_delete_protected": True,
+            "clean_video_orphans": bool(
+                storage_raw.get(
+                    "clean_video_orphans",
+                    True,
+                )
+            ),
+            "delete_empty_trips": bool(
+                storage_raw.get(
+                    "delete_empty_trips",
+                    True,
+                )
+            ),
+            "dry_run": bool(
+                storage_raw.get(
+                    "dry_run",
+                    False,
+                )
+            ),
+        },
+        "recording": {
+            "enabled": bool(
+                recording_raw.get(
+                    "enabled",
+                    False,
+                )
+            ),
+            "fps": (
+                _settings_number(
+                    recording_raw.get(
+                        "fps",
+                        20,
+                    ),
+                    minimum=5,
+                    maximum=30,
+                    field="FPS",
+                )
+            ),
+            "segment_seconds": (
+                _settings_number(
+                    recording_raw.get(
+                        "segment_seconds",
+                        30,
+                    ),
+                    minimum=10,
+                    maximum=600,
+                    field=(
+                        "Duración del segmento"
+                    ),
+                )
+            ),
+        },
+        "parking": {
+            "enabled": bool(
+                parking_raw.get(
+                    "enabled",
+                    False,
+                )
+            ),
+            "trigger": trigger,
+            "pre_event_seconds": (
+                _settings_number(
+                    parking_raw.get(
+                        "pre_event_seconds",
+                        10,
+                    ),
+                    minimum=0,
+                    maximum=120,
+                    field=(
+                        "Segundos anteriores"
+                    ),
+                )
+            ),
+            "record_seconds": (
+                _settings_number(
+                    parking_raw.get(
+                        "record_seconds",
+                        30,
+                    ),
+                    minimum=5,
+                    maximum=600,
+                    field=(
+                        "Duración inicial Parking"
+                    ),
+                )
+            ),
+            "extend_seconds": (
+                _settings_number(
+                    parking_raw.get(
+                        "extend_seconds",
+                        15,
+                    ),
+                    minimum=0,
+                    maximum=300,
+                    field=(
+                        "Extensión por movimiento"
+                    ),
+                )
+            ),
+            "max_event_seconds": (
+                _settings_number(
+                    parking_raw.get(
+                        "max_event_seconds",
+                        120,
+                    ),
+                    minimum=10,
+                    maximum=3600,
+                    field=(
+                        "Duración máxima del evento"
+                    ),
+                )
+            ),
+            "cooldown_seconds": (
+                _settings_number(
+                    parking_raw.get(
+                        "cooldown_seconds",
+                        5,
+                    ),
+                    minimum=0,
+                    maximum=300,
+                    field=(
+                        "Tiempo de espera Parking"
+                    ),
+                )
+            ),
+            "motion_sensitivity": (
+                _settings_number(
+                    parking_raw.get(
+                        "motion_sensitivity",
+                        0.55,
+                    ),
+                    minimum=0.05,
+                    maximum=1,
+                    field=(
+                        "Sensibilidad de movimiento"
+                    ),
+                )
+            ),
+            "protect_recording": bool(
+                parking_raw.get(
+                    "protect_recording",
+                    True,
+                )
+            ),
+            "capture_photo": bool(
+                parking_raw.get(
+                    "capture_photo",
+                    False,
+                )
+            ),
+        },
+    }
+
+
+@router.get(
+    "/api/settings"
+)
+async def settings_get():
+    data = _settings_read_config()
+
+    return {
+        "ok": True,
+        "settings": {
+            "storage": data.get(
+                "storage",
+                {},
+            ),
+            "recording": data.get(
+                "recording",
+                {},
+            ),
+            "parking": data.get(
+                "parking",
+                {},
+            ),
+        },
+        "restart_required_after_save": True,
+    }
+
+
+@router.put(
+    "/api/settings"
+)
+async def settings_update(
+    payload: dict,
+):
+    validated = _settings_validate(
+        payload
+    )
+
+    data = _settings_read_config()
+
+    for section, values in validated.items():
+        current = data.get(
+            section,
+            {},
+        )
+
+        if not isinstance(
+            current,
+            dict,
+        ):
+            current = {}
+
+        current.update(
+            values
+        )
+
+        data[
+            section
+        ] = current
+
+    _settings_atomic_write(
+        data
+    )
+
+    return {
+        "ok": True,
+        "settings": validated,
+        "restart_required": True,
+        "message": (
+            "Configuración guardada. "
+            "Reinicia RoadEye para aplicar "
+            "todos los cambios."
+        ),
+    }
