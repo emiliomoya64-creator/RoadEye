@@ -212,7 +212,7 @@ class HDMIDisplayService:
             "is-live=true "
             "block=false "
             "format=time "
-            "do-timestamp=false "
+            "do-timestamp=true "
             "! queue "
             "max-size-buffers=2 "
             "leaky=downstream "
@@ -261,6 +261,7 @@ class HDMIDisplayService:
         appsrc.set_property("is-live", True)
         appsrc.set_property("block", False)
         appsrc.set_property("format", Gst.Format.TIME)
+        appsrc.set_property("do-timestamp", True)
 
         bus = pipeline.get_bus()
 
@@ -334,13 +335,8 @@ class HDMIDisplayService:
             frame_bytes,
         )
 
-        timestamp = (
-            self._frame_index
-            * self.frame_duration_ns
-        )
-
-        buffer.pts = timestamp
-        buffer.dts = timestamp
+        # appsrc asigna PTS/DTS usando el reloj real
+        # de la tubería. Conservamos únicamente la duración.
         buffer.duration = self.frame_duration_ns
 
         flow_result = self._appsrc.emit(
