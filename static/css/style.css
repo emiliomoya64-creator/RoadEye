@@ -3687,3 +3687,196 @@ button {
         0 0 0 6px rgba(53, 200, 120, 0.27),
         0 6px 18px rgba(0, 0, 0, 0.68);
 }
+
+
+/* ============================================================
+   ROADEYE RESPONSIVE MOBILE
+   La cámara nunca puede superar el ancho de la pantalla.
+   ============================================================ */
+
+html,
+body {
+    width: 100%;
+    max-width: 100%;
+
+    margin: 0;
+
+    overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+
+/* Todo contenedor puede encogerse */
+
+main,
+section,
+article,
+.card,
+.panel,
+.container,
+.dashboard,
+.dashboard-grid,
+.camera-card,
+.camera-panel,
+.camera-container,
+.video-container,
+.stream-container {
+    min-width: 0;
+    max-width: 100%;
+}
+
+
+/* Elementos multimedia nunca desbordan */
+
+img,
+video,
+canvas,
+svg {
+    max-width: 100%;
+}
+
+
+/* ============================================================
+   STREAM / IMAGEN DE LA CÁMARA
+   ============================================================ */
+
+.camera-stream,
+.camera-feed,
+.video-feed,
+.live-stream,
+.stream-wrapper,
+.video-wrapper,
+[class*="camera-stream"],
+[class*="camera-feed"],
+[class*="video-feed"] {
+    width: 100%;
+    max-width: 100%;
+
+    overflow: hidden;
+}
+
+
+/* Imagen MJPEG RoadEye */
+
+.camera-stream img,
+.camera-feed img,
+.video-feed img,
+.live-stream img,
+.stream-wrapper img,
+.video-wrapper img,
+img[src*="stream"],
+img[src*="video"],
+img[src*="camera"] {
+    display: block;
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    height: auto !important;
+
+    aspect-ratio: 16 / 9;
+
+    object-fit: contain;
+
+    margin: 0 auto;
+}
+
+
+/* Si algún navegador lo trata como vídeo/canvas */
+
+.camera-stream video,
+.camera-stream canvas,
+.camera-feed video,
+.camera-feed canvas,
+.video-feed video,
+.video-feed canvas {
+    display: block;
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    height: auto !important;
+
+    aspect-ratio: 16 / 9;
+
+    object-fit: contain;
+
+    margin: 0 auto;
+}
+
+
+/* ============================================================
+   MÓVIL
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+    body {
+        width: 100%;
+        min-width: 0;
+    }
+
+    main,
+    .container,
+    .dashboard,
+    .dashboard-grid {
+        width: 100%;
+        max-width: 100%;
+
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .camera-card,
+    .camera-panel,
+    .camera-container,
+    .stream-container,
+    .video-container {
+        width: 100%;
+        max-width: 100%;
+
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+}
+
+
+/* Móviles muy estrechos */
+
+@media (max-width: 480px) {
+
+    main,
+    .container,
+    .dashboard,
+    .dashboard-grid {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+
+}
+
+
+/* Horizontal: utiliza todo el ancho disponible */
+
+@media (
+    max-width: 950px
+)
+and (
+    orientation: landscape
+) {
+
+    .camera-stream,
+    .camera-feed,
+    .video-feed,
+    .stream-wrapper {
+        width: 100%;
+        max-width: 100%;
+    }
+
+}

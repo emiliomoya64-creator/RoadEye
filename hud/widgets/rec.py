@@ -37,7 +37,7 @@ class RecWidget:
             frame,
             "REC",
             (
-                Layout.REC[0] + hud.scale(18),
+                Layout.REC[0] + hud.scale(28),
                 Layout.REC[1] + hud.scale(6),
             ),
             scale=0.65,
@@ -48,7 +48,7 @@ class RecWidget:
             frame,
             self._get_status_text(recording),
             (
-                Layout.REC[0] + hud.scale(88),
+                Layout.REC[0] + hud.scale(102),
                 Layout.REC[1] + hud.scale(6),
             ),
             scale=0.58,

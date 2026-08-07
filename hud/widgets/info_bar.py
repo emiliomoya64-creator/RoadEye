@@ -10,21 +10,6 @@ from hud.layout import Layout
 
 
 class InfoBarWidget:
-    """
-    Segunda fila superior del HUD RoadEye 0.6.
-
-    Muestra:
-
-    - Calle o carretera.
-    - Coordenadas GPS.
-    - Fecha.
-    - Hora.
-    - Acceso visual a configuración.
-    """
-
-    COLOR_WHITE = (242, 245, 245)
-    COLOR_MUTED = (175, 185, 188)
-    COLOR_SEPARATOR = (85, 92, 95)
 
     def draw(
         self,
@@ -36,6 +21,7 @@ class InfoBarWidget:
         gps_fix,
         visible: dict | None = None,
     ) -> None:
+
         visible = visible or {}
 
         def is_visible(name):
@@ -48,8 +34,6 @@ class InfoBarWidget:
 
         row_y = Layout.INFO_ROW_Y
         row_h = Layout.INFO_ROW_HEIGHT
-
-        margin = Layout.HORIZONTAL_MARGIN
         center_y = row_y + row_h // 2
 
         now = datetime.datetime.now()
@@ -59,7 +43,7 @@ class InfoBarWidget:
             "---",
         )
 
-        coordinates_text = self._coordinates_text(
+        coordinates = self._coordinates_text(
             latitude,
             longitude,
             gps_fix,
@@ -70,256 +54,233 @@ class InfoBarWidget:
         )
 
         time_text = now.strftime(
-            "%H:%M:%S"
+            "%H:%M"
         )
 
-        settings_width = max(
-            62,
-            int(92 * Layout.S),
-        )
-
-        right_edge = (
-            Layout.W
-            - margin
-            - settings_width
-        )
-
-        time_width = max(
-            88,
-            int(145 * Layout.S),
-        )
-
-        date_width = max(
-            98,
-            int(170 * Layout.S),
-        )
-
-        coordinates_width = max(
-            180,
-            int(310 * Layout.S),
-        )
-
-        time_x = right_edge - time_width
-        date_x = time_x - date_width
-        coordinates_x = date_x - coordinates_width
-
-        road_x = margin
-        road_available = max(
-            100,
-            coordinates_x - road_x - hud.scale(15),
-        )
-
-        road_text = self._fit_text(
-            road_text,
-            road_available,
-            scale=0.60,
-            thickness=1,
-        )
+        # Segmentos de la barra inferior.
+        sections = {
+            "road": (
+                0.02,
+                0.36,
+            ),
+            "coordinates": (
+                0.37,
+                0.62,
+            ),
+            "date": (
+                0.63,
+                0.79,
+            ),
+            "time": (
+                0.80,
+                0.94,
+            ),
+            "settings": (
+                0.95,
+                0.995,
+            ),
+        }
 
         if is_visible("road"):
-            road_icon_size = hud.scale(30)
-
-            icons.draw_centered(
+            self._draw_item(
                 frame,
+                sections["road"],
+                center_y,
                 "road",
-                (
-                    road_x
-                    + road_icon_size // 2,
-                    center_y,
-                ),
-                road_icon_size,
-                tint=self.COLOR_WHITE,
-            )
-
-            hud.shadow_text(
-                frame,
                 road_text,
-                (
-                    road_x
-                    + road_icon_size
-                    + hud.scale(10),
-                    center_y + hud.scale(7),
-                ),
-                scale=0.60,
-                color=self.COLOR_WHITE,
-                thickness=1,
+                max_chars=31,
             )
 
         if is_visible("coordinates"):
-            hud.shadow_text(
+            self._draw_item(
                 frame,
-                coordinates_text,
-                (
-                    coordinates_x + hud.scale(14),
-                    center_y + hud.scale(6),
-                ),
-                scale=0.48,
-                color=self.COLOR_MUTED,
-                thickness=1,
+                sections["coordinates"],
+                center_y,
+                "coordinates",
+                coordinates,
+                max_chars=24,
+                muted=True,
             )
 
         if is_visible("date"):
-            hud.shadow_text(
+            self._draw_item(
                 frame,
+                sections["date"],
+                center_y,
+                "calendar",
                 date_text,
-                (
-                    date_x + hud.scale(14),
-                    center_y + hud.scale(6),
-                ),
-                scale=0.50,
-                color=self.COLOR_WHITE,
-                thickness=1,
+                max_chars=10,
             )
 
         if is_visible("time"):
-            hud.shadow_text(
+            self._draw_item(
                 frame,
+                sections["time"],
+                center_y,
+                "clock",
                 time_text,
-                (
-                    time_x + hud.scale(14),
-                    center_y + hud.scale(6),
-                ),
-                scale=0.56,
-                color=self.COLOR_WHITE,
-                thickness=1,
+                max_chars=5,
             )
 
         if is_visible("settings"):
-            self._draw_settings_icon(
+            left = int(
+                Layout.W
+                * sections["settings"][0]
+            )
+
+            right = int(
+                Layout.W
+                * sections["settings"][1]
+            )
+
+            icons.draw_centered(
                 frame,
+                "settings",
                 (
-                    right_edge
-                    + settings_width // 2,
+                    (left + right) // 2,
                     center_y,
                 ),
+                hud.icon_scale(25),
+                tint=hud.primary_color(),
             )
 
-    # ---------------------------------------------------------
-    # Configuración
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
 
-    def _draw_settings_icon(
+    def _draw_item(
         self,
         frame,
-        center,
+        section,
+        center_y,
+        icon_name,
+        text,
+        *,
+        max_chars,
+        muted=False,
     ):
-        x, y = center
 
-        outer_radius = hud.scale(17)
-        inner_radius = hud.scale(6)
-
-        cv2.circle(
-            frame,
-            center,
-            outer_radius,
-            self.COLOR_WHITE,
-            max(1, hud.scale(2)),
-            cv2.LINE_AA,
+        left = int(
+            Layout.W
+            * section[0]
         )
 
-        cv2.circle(
-            frame,
-            center,
-            inner_radius,
-            self.COLOR_WHITE,
-            max(1, hud.scale(2)),
-            cv2.LINE_AA,
+        right = int(
+            Layout.W
+            * section[1]
         )
 
-        for angle in range(0, 360, 45):
-            import math
+        icon_size = hud.icon_scale(25)
 
-            radians = math.radians(angle)
+        icon_x = (
+            left
+            + icon_size // 2
+        )
 
-            x1 = int(
-                x + math.cos(radians) * outer_radius
-            )
-            y1 = int(
-                y + math.sin(radians) * outer_radius
-            )
+        color = (
+            hud.muted_color()
+            if muted
+            else hud.primary_color()
+        )
 
-            x2 = int(
-                x + math.cos(radians)
-                * (outer_radius + hud.scale(7))
-            )
-            y2 = int(
-                y + math.sin(radians)
-                * (outer_radius + hud.scale(7))
-            )
-
-            cv2.line(
-                frame,
-                (x1, y1),
-                (x2, y2),
-                self.COLOR_WHITE,
-                max(1, hud.scale(3)),
-                cv2.LINE_AA,
-            )
-
-    # ---------------------------------------------------------
-    # Utilidades
-    # ---------------------------------------------------------
-
-    def _draw_separator(
-        self,
-        frame,
-        x,
-        row_y,
-        row_h,
-    ):
-        cv2.line(
+        icons.draw_centered(
             frame,
+            icon_name,
             (
-                x,
-                row_y + hud.scale(10),
+                icon_x,
+                center_y,
             ),
-            (
-                x,
-                row_y + row_h - hud.scale(10),
-            ),
-            self.COLOR_SEPARATOR,
-            max(1, hud.scale(1)),
-            cv2.LINE_AA,
+            icon_size,
+            tint=color,
         )
+
+        safe_text = str(text)
+
+        if len(safe_text) > max_chars:
+            safe_text = (
+                safe_text[
+                    :max(
+                        1,
+                        max_chars - 3,
+                    )
+                ]
+                + "..."
+            )
+
+        text_x = (
+            left
+            + icon_size
+            + hud.scale(8)
+        )
+
+        available = max(
+            20,
+            right
+            - text_x
+            - hud.scale(4),
+        )
+
+        fitted = self._fit_text(
+            safe_text,
+            available,
+            base_scale=0.47,
+        )
+
+        hud.shadow_text(
+            frame,
+            fitted,
+            (
+                text_x,
+                center_y
+                + hud.scale(6),
+            ),
+            scale=0.47,
+            color=color,
+            thickness=1,
+        )
+
+    # -----------------------------------------------------
 
     def _fit_text(
         self,
         text,
         maximum_width,
         *,
-        scale,
-        thickness,
+        base_scale,
     ):
-        cleaned = self._safe_text(
-            text,
-            "---",
-        )
 
-        font_scale = max(
-            0.35,
-            scale * Layout.S,
+        cleaned = str(text)
+
+        font = hud.font_face()
+
+        scale = (
+            base_scale
+            * Layout.S
+            * hud.text_factor()
         )
 
         while cleaned:
-            width = cv2.getTextSize(
-                cleaned,
-                cv2.FONT_HERSHEY_DUPLEX,
-                font_scale,
-                max(1, hud.scale(thickness)),
-            )[0][0]
 
-            if width <= maximum_width:
+            size = cv2.getTextSize(
+                cleaned,
+                font,
+                scale,
+                1,
+            )[0]
+
+            if size[0] <= maximum_width:
                 return cleaned
 
             if len(cleaned) <= 4:
-                return "---"
+                return "..."
 
             cleaned = (
-                cleaned[:-4].rstrip()
+                cleaned[:-4]
+                .rstrip()
                 + "..."
             )
 
         return "---"
+
+    # -----------------------------------------------------
 
     @staticmethod
     def _coordinates_text(
@@ -327,22 +288,27 @@ class InfoBarWidget:
         longitude,
         gps_fix,
     ):
+
         if not gps_fix:
             return "GPS sin posición"
 
         try:
             return (
-                f"{float(latitude):.5f}, "
+                f"{float(latitude):.5f} "
                 f"{float(longitude):.5f}"
             )
-        except (TypeError, ValueError):
-            return "Coordenadas no disponibles"
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return "---"
 
     @staticmethod
     def _safe_text(
         value,
         default,
     ):
+
         if value is None:
             return default
 

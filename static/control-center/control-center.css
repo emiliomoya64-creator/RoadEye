@@ -631,3 +631,238 @@ select {
         align-items: flex-start;
     }
 }
+
+
+/* =========================================================
+   ROAD EYE HUD PREVIEW SVG FINAL
+   ========================================================= */
+
+.hud-preview-card {
+    min-width: 0;
+}
+
+.hud-preview-final {
+    --preview-icon-scale: 1;
+    --preview-text-scale: 1;
+    --preview-color: #ffffff;
+    --preview-font:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
+
+    width: 100%;
+
+    margin-top: 20px;
+}
+
+.roadeye-preview-svg {
+    display: block;
+
+    width: 100%;
+    height: auto;
+
+    max-width: 100%;
+
+    border:
+        1px solid
+        #33454d;
+
+    border-radius: 18px;
+
+    overflow: hidden;
+
+    background: #11191d;
+
+    box-shadow:
+        0 18px 45px
+        rgba(0, 0, 0, .28);
+}
+
+
+/* Barras HUD */
+
+.roadeye-preview-svg
+.preview-hud-bar {
+    fill:
+        rgba(
+            5,
+            11,
+            14,
+            .82
+        );
+}
+
+
+/* Color configurable */
+
+.roadeye-preview-svg
+.preview-line {
+    stroke:
+        var(--preview-color);
+}
+
+.roadeye-preview-svg
+.preview-fill {
+    fill:
+        var(--preview-color);
+}
+
+
+/* Fuente */
+
+.roadeye-preview-svg text {
+    font-family:
+        var(--preview-font);
+}
+
+
+/* Textos */
+
+.roadeye-preview-svg
+.preview-main-text {
+    fill:
+        var(--preview-color);
+
+    font-size:
+        calc(
+            30px
+            * var(--preview-text-scale)
+        );
+
+    font-weight: 700;
+}
+
+.roadeye-preview-svg
+.preview-secondary-text {
+    fill:
+        var(--preview-color);
+
+    font-size:
+        calc(
+            25px
+            * var(--preview-text-scale)
+        );
+
+    font-weight: 500;
+}
+
+.roadeye-preview-svg
+.preview-parking-p {
+    font-size:
+        calc(
+            38px
+            * var(--preview-text-scale)
+        );
+}
+
+.roadeye-preview-svg
+.preview-satellite-number {
+    fill:
+        var(--preview-color);
+
+    font-size:
+        calc(
+            29px
+            * var(--preview-text-scale)
+        );
+
+    font-weight: 700;
+}
+
+.roadeye-preview-svg
+.preview-limit-number {
+    font-size:
+        calc(
+            31px
+            * var(--preview-text-scale)
+        );
+
+    font-weight: 900;
+}
+
+.roadeye-preview-svg
+.preview-info-text {
+    fill:
+        var(--preview-color);
+
+    font-size:
+        calc(
+            23px
+            * var(--preview-text-scale)
+        );
+
+    font-weight: 500;
+}
+
+
+/* Escala de iconos */
+
+.roadeye-preview-svg
+.preview-scalable-icon,
+.roadeye-preview-svg
+.preview-bottom-icon {
+    transform-box:
+        fill-box;
+
+    transform-origin:
+        center;
+}
+
+.roadeye-preview-svg
+.preview-scalable-icon {
+    scale:
+        calc(
+            .78
+            + .22
+            * var(--preview-icon-scale)
+        );
+}
+
+.roadeye-preview-svg
+.preview-bottom-icon {
+    scale:
+        calc(
+            .82
+            + .18
+            * var(--preview-icon-scale)
+        );
+}
+
+
+/* Noche */
+
+.hud-preview.preview-night
+.roadeye-preview-svg {
+    filter:
+        brightness(.62);
+}
+
+
+/* Día */
+
+.hud-preview.preview-day
+.roadeye-preview-svg {
+    filter:
+        brightness(1);
+}
+
+
+/* Evitar desbordamientos visuales */
+
+.hud-preview-card {
+    overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+
+    .roadeye-preview-svg
+    .preview-info-text {
+        font-size:
+            calc(
+                19px
+                * var(--preview-text-scale)
+            );
+    }
+
+}
+

@@ -66,8 +66,8 @@
     "hud": {
         "enabled": true,
         "profile": "normal",
-        "top_opacity": 0.65,
-        "info_opacity": 0.5,
+        "top_opacity": 1.0,
+        "info_opacity": 0.8,
         "info_position": "bottom",
         "show": {
             "recording": true,
@@ -82,7 +82,15 @@
             "date": true,
             "time": true,
             "settings": true
-        }
+        },
+        "icon_scale": 1.85,
+        "text_scale": 1.6,
+        "font": "duplex",
+        "color": "white",
+        "mode": "day",
+        "bar_color": "black",
+        "top_bar_scale": 1.6,
+        "info_bar_scale": 1.6
     },
     "adas": {
         "enabled": false,

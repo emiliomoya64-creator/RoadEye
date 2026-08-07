@@ -241,6 +241,54 @@ def _hud_configuration():
                 0.58,
             )
         ),
+        "icon_scale": float(
+            config.get(
+                "hud.icon_scale",
+                1.0,
+            )
+        ),
+        "text_scale": float(
+            config.get(
+                "hud.text_scale",
+                1.0,
+            )
+        ),
+        "font": str(
+            config.get(
+                "hud.font",
+                "duplex",
+            )
+        ),
+        "color": str(
+            config.get(
+                "hud.color",
+                "white",
+            )
+        ),
+        "top_bar_scale": float(
+            config.get(
+                "hud.top_bar_scale",
+                1.0,
+            )
+        ),
+        "info_bar_scale": float(
+            config.get(
+                "hud.info_bar_scale",
+                1.0,
+            )
+        ),
+        "bar_color": str(
+            config.get(
+                "hud.bar_color",
+                "black",
+            )
+        ),
+        "mode": str(
+            config.get(
+                "hud.mode",
+                "auto",
+            )
+        ),
         "show": {
             name: bool(
                 config.get(
@@ -358,6 +406,175 @@ async def hud_settings_update(
         "info_opacity",
     )
 
+    try:
+        icon_scale = float(
+            payload.get(
+                "icon_scale",
+                current["icon_scale"],
+            )
+        )
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422,
+            detail="icon_scale debe ser un número.",
+        )
+
+    if not 0.80 <= icon_scale <= 2.00:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "icon_scale debe estar "
+                "entre 0.80 y 2.00."
+            ),
+        )
+
+    try:
+        text_scale = float(
+            payload.get(
+                "text_scale",
+                current["text_scale"],
+            )
+        )
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422,
+            detail="text_scale debe ser un número.",
+        )
+
+    if not 0.80 <= text_scale <= 2.00:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "text_scale debe estar "
+                "entre 0.80 y 2.00."
+            ),
+        )
+
+    font = str(
+        payload.get(
+            "font",
+            current.get("font", "duplex"),
+        )
+    ).strip().lower()
+
+    if font not in {
+        "simplex",
+        "duplex",
+        "triplex",
+        "complex",
+        "plain",
+        "complex_small",
+        "script",
+        "script_complex",
+    }:
+        raise HTTPException(
+            status_code=422,
+            detail="Fuente HUD no válida.",
+        )
+
+    color = str(
+        payload.get(
+            "color",
+            current.get("color", "white"),
+        )
+    ).strip().lower()
+
+    if color not in {
+        "white",
+        "green",
+        "amber",
+        "ice_blue",
+        "red",
+    }:
+        raise HTTPException(
+            status_code=422,
+            detail="Color HUD no válido.",
+        )
+
+    mode = str(
+        payload.get(
+            "mode",
+            current.get("mode", "auto"),
+        )
+    ).strip().lower()
+
+    if mode not in {
+        "day",
+        "night",
+        "auto",
+    }:
+        raise HTTPException(
+            status_code=422,
+            detail="Modo HUD no válido.",
+        )
+
+    bar_color = str(
+        payload.get(
+            "bar_color",
+            current.get(
+                "bar_color",
+                "black",
+            ),
+        )
+    ).strip().lower()
+
+    if bar_color not in {
+        "black",
+        "white",
+    }:
+        raise HTTPException(
+            status_code=422,
+            detail="Color de franjas no válido.",
+        )
+
+    try:
+        top_bar_scale = float(
+            payload.get(
+                "top_bar_scale",
+                current.get(
+                    "top_bar_scale",
+                    1.0,
+                ),
+            )
+        )
+
+        info_bar_scale = float(
+            payload.get(
+                "info_bar_scale",
+                current.get(
+                    "info_bar_scale",
+                    1.0,
+                ),
+            )
+        )
+
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "La escala de las franjas "
+                "debe ser numérica."
+            ),
+        )
+
+    if not 0.70 <= top_bar_scale <= 1.60:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "top_bar_scale debe estar "
+                "entre 0.70 y 1.60."
+            ),
+        )
+
+    if not 0.70 <= info_bar_scale <= 1.60:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "info_bar_scale debe estar "
+                "entre 0.70 y 1.60."
+            ),
+        )
+
     requested_show = payload.get(
         "show",
         {},
@@ -397,6 +614,14 @@ async def hud_settings_update(
                 "info_position": info_position,
                 "top_opacity": top_opacity,
                 "info_opacity": info_opacity,
+                "icon_scale": icon_scale,
+                "text_scale": text_scale,
+                "font": font,
+                "color": color,
+                "mode": mode,
+                "bar_color": bar_color,
+                "top_bar_scale": top_bar_scale,
+                "info_bar_scale": info_bar_scale,
                 "show": updated_show,
             }
         },
@@ -420,6 +645,11 @@ async def hud_settings_reset():
         "info_position": "bottom",
         "top_opacity": 0.66,
         "info_opacity": 0.58,
+        "icon_scale": 1.0,
+        "text_scale": 1.0,
+        "font": "duplex",
+        "color": "white",
+        "mode": "auto",
         "show": {
             name: True
             for name in HUD_WIDGETS

@@ -1,6 +1,8 @@
 import cv2
+import datetime
 import numpy as np
 
+from core.config_manager import config
 from hud.layout import Layout
 
 
@@ -8,8 +10,175 @@ class HUDEngine:
 
     # ----------------------------------------------------
 
+    def font_face(self):
+        name = str(
+            config.get(
+                "hud.font",
+                "duplex",
+            )
+        ).strip().lower()
+
+        fonts = {
+            "simplex":
+                cv2.FONT_HERSHEY_SIMPLEX,
+
+            "duplex":
+                cv2.FONT_HERSHEY_DUPLEX,
+
+            "triplex":
+                cv2.FONT_HERSHEY_TRIPLEX,
+
+            "complex":
+                cv2.FONT_HERSHEY_COMPLEX,
+
+            "plain":
+                cv2.FONT_HERSHEY_PLAIN,
+
+            "complex_small":
+                cv2.FONT_HERSHEY_COMPLEX_SMALL,
+
+            "script":
+                cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+
+            "script_complex":
+                cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
+        }
+
+        return fonts.get(
+            name,
+            cv2.FONT_HERSHEY_DUPLEX,
+        )
+
+    def display_mode(self):
+        mode = str(
+            config.get(
+                "hud.mode",
+                "auto",
+            )
+        ).strip().lower()
+
+        if mode in {"day", "night"}:
+            return mode
+
+        hour = datetime.datetime.now().hour
+
+        return (
+            "day"
+            if 7 <= hour < 20
+            else "night"
+        )
+
+    def _brightness_factor(self):
+        return (
+            1.0
+            if self.display_mode() == "day"
+            else 0.62
+        )
+
+    def bar_color(self):
+        name = str(
+            config.get(
+                "hud.bar_color",
+                "black",
+            )
+        ).strip().lower()
+
+        if name == "white":
+            return (
+                245,
+                245,
+                245,
+            )
+
+        return (
+            15,
+            15,
+            15,
+        )
+
+    def primary_color(self):
+        name = str(
+            config.get(
+                "hud.color",
+                "white",
+            )
+        ).strip().lower()
+
+        colors = {
+            "white": (255, 255, 255),
+            "green": (120, 255, 120),
+            "amber": (0, 190, 255),
+            "ice_blue": (255, 220, 160),
+            "red": (90, 90, 255),
+        }
+
+        base = colors.get(
+            name,
+            colors["white"],
+        )
+
+        factor = self._brightness_factor()
+
+        return tuple(
+            max(
+                0,
+                min(
+                    255,
+                    int(channel * factor),
+                ),
+            )
+            for channel in base
+        )
+
+    def muted_color(self):
+        return tuple(
+            int(channel * 0.62)
+            for channel in self.primary_color()
+        )
+
     def scale(self, value):
         return max(1, int(value * Layout.S))
+
+    def text_factor(self):
+        factor = float(
+            config.get(
+                "hud.text_scale",
+                1.0,
+            )
+        )
+
+        return max(
+            0.80,
+            min(
+                2.00,
+                factor,
+            ),
+        )
+
+    def icon_scale(self, value):
+        factor = float(
+            config.get(
+                "hud.icon_scale",
+                1.0,
+            )
+        )
+
+        factor = max(
+            0.80,
+            min(
+                2.00,
+                factor,
+            ),
+        )
+
+        return max(
+            1,
+            int(
+                value
+                * Layout.S
+                * factor
+            ),
+        )
 
     # ----------------------------------------------------
 
@@ -22,12 +191,21 @@ class HUDEngine:
         color=(255, 255, 255),
         thickness=2,
         shadow=(0, 0, 0),
-        font=cv2.FONT_HERSHEY_DUPLEX,
+        font=None,
     ):
 
         x, y = pos
 
-        scale *= Layout.S
+        if font is None:
+            font = self.font_face()
+
+        if color == (255, 255, 255):
+            color = self.primary_color()
+
+        scale *= (
+            Layout.S
+            * self.text_factor()
+        )
         thickness = max(1, int(thickness * Layout.S))
 
         cv2.putText(
@@ -65,7 +243,7 @@ class HUDEngine:
         cv2.circle(
             frame,
             center,
-            self.scale(radius),
+            self.icon_scale(radius),
             color,
             -1,
             cv2.LINE_AA
@@ -83,8 +261,8 @@ class HUDEngine:
         border_size=4,
     ):
 
-        radius = self.scale(radius)
-        border_size = self.scale(border_size)
+        radius = self.icon_scale(radius)
+        border_size = self.icon_scale(border_size)
 
         cv2.circle(
             frame,
@@ -146,7 +324,7 @@ class HUDEngine:
             0,
             Layout.W,
             Layout.TOP_BAR,
-            (15,15,15),
+            self.bar_color(),
             0.45
         )
 
@@ -160,7 +338,7 @@ class HUDEngine:
             Layout.H - Layout.BOTTOM_BAR,
             Layout.W,
             Layout.BOTTOM_BAR,
-            (15,15,15),
+            self.bar_color(),
             0.45
         )
 
@@ -213,7 +391,7 @@ class HUDEngine:
 
         for i in range(4):
 
-            h = self.scale(6 + i * 6)
+            h = self.icon_scale(6 + i * 6)
 
             color = (
                 (0,255,0)
@@ -225,11 +403,11 @@ class HUDEngine:
             cv2.rectangle(
                 frame,
                 (
-                    x + self.scale(i * 9),
+                    x + self.icon_scale(i * 9),
                     y - h
                 ),
                 (
-                    x + self.scale(i * 9 + 6),
+                    x + self.icon_scale(i * 9 + 6),
                     y
                 ),
                 color,

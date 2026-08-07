@@ -16,7 +16,13 @@ class Layout:
     ConfigManager para permitir personalizar el HUD.
     """
 
-    def update(self, frame, info_position="bottom"):
+    def update(
+        self,
+        frame,
+        info_position="bottom",
+        top_bar_scale=1.0,
+        info_bar_scale=1.0,
+    ):
         h, w = frame.shape[:2]
 
         self.W = w
@@ -32,9 +38,21 @@ class Layout:
         # Barra superior: acciones y estados
         # =====================================================
 
+        top_bar_scale = max(
+            0.70,
+            min(
+                1.60,
+                float(top_bar_scale),
+            ),
+        )
+
         self.TOP_ROW_HEIGHT = max(
-            54,
-            int(82 * self.S),
+            38,
+            int(
+                82
+                * self.S
+                * top_bar_scale
+            ),
         )
 
         self.TOP_ROW_Y = 0
@@ -44,9 +62,21 @@ class Layout:
         # Barra inferior: ubicación e información
         # =====================================================
 
+        info_bar_scale = max(
+            0.70,
+            min(
+                1.60,
+                float(info_bar_scale),
+            ),
+        )
+
         self.INFO_ROW_HEIGHT = max(
-            46,
-            int(68 * self.S),
+            34,
+            int(
+                68
+                * self.S
+                * info_bar_scale
+            ),
         )
 
         if str(info_position).lower() == "top":

@@ -9,28 +9,9 @@ from hud.widgets.rec import rec_widget
 
 
 class ActionBarWidget:
-    """
-    Barra superior de RoadEye 0.6.
 
-    Orden actual:
-
-    - REC y estado.
-    - Vigilancia de aparcamiento.
-    - GPS.
-    - Velocidad.
-    - Fotografía.
-    - Explorador de vídeos.
-    - Límite de velocidad.
-
-    No se dibujan separadores verticales.
-    """
-
-    COLOR_WHITE = (245, 245, 245)
-    COLOR_MUTED = (145, 155, 160)
     COLOR_GREEN = (70, 220, 110)
-    COLOR_BLUE = (230, 170, 60)
-    COLOR_RED = (50, 60, 240)
-    COLOR_ORANGE = (0, 190, 255)
+    COLOR_MUTED = (120, 130, 135)
 
     def draw(
         self,
@@ -45,6 +26,7 @@ class ActionBarWidget:
         speed_limit: int,
         visible: dict | None = None,
     ) -> None:
+
         visible = visible or {}
 
         def is_visible(name):
@@ -58,14 +40,15 @@ class ActionBarWidget:
         row_y = Layout.TOP_ROW_Y
         row_h = Layout.TOP_ROW_HEIGHT
 
+        # REC ocupa algo más de espacio.
         boundaries = [
             0.00,
             0.18,
-            0.30,
-            0.42,
-            0.58,
-            0.70,
-            0.83,
+            0.29,
+            0.47,
+            0.64,
+            0.75,
+            0.86,
             1.00,
         ]
 
@@ -85,7 +68,6 @@ class ActionBarWidget:
             )
         ]
 
-        # Conserva LISTO, contador y parpadeo.
         if is_visible("recording"):
             rec_widget.draw(
                 frame,
@@ -122,19 +104,21 @@ class ActionBarWidget:
             )
 
         if is_visible("snapshot"):
-            self._draw_photo(
+            self._draw_icon(
                 frame,
                 cells[4],
                 row_y,
                 row_h,
+                "camera",
             )
 
         if is_visible("gallery"):
-            self._draw_gallery(
+            self._draw_icon(
                 frame,
                 cells[5],
                 row_y,
                 row_h,
+                "gallery",
             )
 
         if is_visible("speed_limit"):
@@ -146,9 +130,7 @@ class ActionBarWidget:
                 speed_limit=speed_limit,
             )
 
-    # ---------------------------------------------------------
-    # Parking
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
 
     def _draw_parking(
         self,
@@ -160,45 +142,29 @@ class ActionBarWidget:
         enabled,
         motion,
     ):
-        center_x, center_y = self._cell_center(
+
+        center = self._cell_center(
             cell,
             row_y,
             row_h,
         )
 
         if motion:
-            color = self.COLOR_RED
-            label = "MOVIMIENTO"
+            color = (40, 70, 255)
         elif enabled:
-            color = self.COLOR_BLUE
-            label = "PARK ON"
+            color = hud.primary_color()
         else:
-            color = self.COLOR_MUTED
-            label = "PARK OFF"
+            color = hud.muted_color()
 
         icons.draw_centered(
             frame,
-            "radar",
-            (
-                center_x,
-                center_y - hud.scale(5),
-            ),
-            hud.scale(37),
+            "parking",
+            center,
+            hud.icon_scale(40),
             tint=color,
-            opacity=1.0,
         )
 
-        self._draw_label(
-            frame,
-            label,
-            center_x,
-            center_y + hud.scale(27),
-            color=color,
-        )
-
-    # ---------------------------------------------------------
-    # GPS
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
 
     def _draw_gps(
         self,
@@ -210,26 +176,35 @@ class ActionBarWidget:
         gps_fix,
         satellites,
     ):
-        center_x, center_y = self._cell_center(
-            cell,
-            row_y,
-            row_h,
+
+        left, right = cell
+
+        center_y = (
+            row_y
+            + row_h // 2
         )
 
         color = (
             self.COLOR_GREEN
             if gps_fix
-            else self.COLOR_MUTED
+            else hud.muted_color()
+        )
+
+        satellite_size = hud.icon_scale(34)
+
+        satellite_x = (
+            left
+            + (right - left) // 4
         )
 
         icons.draw_centered(
             frame,
-            "gps_satellite",
+            "satellite",
             (
-                center_x,
-                center_y - hud.scale(5),
+                satellite_x,
+                center_y,
             ),
-            hud.scale(37),
+            satellite_size,
             tint=color,
         )
 
@@ -240,23 +215,131 @@ class ActionBarWidget:
             ),
         )
 
-        label = (
-            f"GPS {satellite_count}"
-            if gps_fix
-            else "GPS SIN SEÑAL"
+        hud.shadow_text(
+            frame,
+            str(satellite_count),
+            (
+                satellite_x
+                + satellite_size // 2
+                + hud.scale(6),
+                center_y
+                + hud.scale(7),
+            ),
+            scale=0.55,
+            color=color,
+            thickness=2,
         )
 
-        self._draw_label(
+        signal_x = (
+            left
+            + int(
+                (right - left)
+                * 0.76
+            )
+        )
+
+        self._draw_signal_bars(
             frame,
-            label,
-            center_x,
-            center_y + hud.scale(27),
+            signal_x,
+            center_y,
+            satellites=satellite_count,
+            gps_fix=gps_fix,
             color=color,
         )
 
-    # ---------------------------------------------------------
-    # Velocidad
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+
+    def _draw_signal_bars(
+        self,
+        frame,
+        center_x,
+        center_y,
+        *,
+        satellites,
+        gps_fix,
+        color,
+    ):
+        """
+        Indicador GNSS de cuatro barras.
+
+        0-2 satélites  -> 0 barras
+        3-5            -> 1 barra
+        6-8            -> 2 barras
+        9-11           -> 3 barras
+        12+            -> 4 barras
+        """
+
+        if not gps_fix:
+            active = 0
+        elif satellites >= 12:
+            active = 4
+        elif satellites >= 9:
+            active = 3
+        elif satellites >= 6:
+            active = 2
+        elif satellites >= 3:
+            active = 1
+        else:
+            active = 0
+
+        bar_width = hud.icon_scale(5)
+        gap = hud.icon_scale(3)
+
+        heights = [
+            hud.icon_scale(10),
+            hud.icon_scale(17),
+            hud.icon_scale(24),
+            hud.icon_scale(31),
+        ]
+
+        total_width = (
+            bar_width * 4
+            + gap * 3
+        )
+
+        start_x = (
+            center_x
+            - total_width // 2
+        )
+
+        bottom = (
+            center_y
+            + hud.icon_scale(15)
+        )
+
+        for index, height in enumerate(
+            heights
+        ):
+            x1 = (
+                start_x
+                + index
+                * (bar_width + gap)
+            )
+
+            x2 = x1 + bar_width
+
+            bar_color = (
+                color
+                if index < active
+                else hud.muted_color()
+            )
+
+            cv2.rectangle(
+                frame,
+                (
+                    x1,
+                    bottom - height,
+                ),
+                (
+                    x2,
+                    bottom,
+                ),
+                bar_color,
+                -1,
+                cv2.LINE_AA,
+            )
+
+    # -----------------------------------------------------
 
     def _draw_speed(
         self,
@@ -267,10 +350,13 @@ class ActionBarWidget:
         *,
         speed,
     ):
-        center_x, center_y = self._cell_center(
-            cell,
-            row_y,
-            row_h,
+
+        center_x, center_y = (
+            self._cell_center(
+                cell,
+                row_y,
+                row_h,
+            )
         )
 
         value = max(
@@ -280,13 +366,14 @@ class ActionBarWidget:
             ),
         )
 
-        number = str(
-            value
-        )
+        number = str(value)
 
-        scale = max(
-            0.76,
-            1.08 * Layout.S,
+        font = hud.font_face()
+
+        scale = (
+            1.02
+            * Layout.S
+            * hud.text_factor()
         )
 
         thickness = max(
@@ -294,47 +381,83 @@ class ActionBarWidget:
             hud.scale(2),
         )
 
-        size = cv2.getTextSize(
+        number_size = cv2.getTextSize(
             number,
-            cv2.FONT_HERSHEY_DUPLEX,
+            font,
             scale,
             thickness,
         )[0]
+
+        unit_scale = (
+            0.44
+            * Layout.S
+            * hud.text_factor()
+        )
+
+        unit_size = cv2.getTextSize(
+            "km/h",
+            font,
+            unit_scale,
+            1,
+        )[0]
+
+        gap = hud.scale(8)
+
+        total_width = (
+            number_size[0]
+            + gap
+            + unit_size[0]
+        )
+
+        start_x = (
+            center_x
+            - total_width // 2
+        )
 
         cv2.putText(
             frame,
             number,
             (
-                center_x - size[0] // 2,
-                center_y + hud.scale(5),
+                start_x,
+                center_y
+                + number_size[1] // 2,
             ),
-            cv2.FONT_HERSHEY_DUPLEX,
+            font,
             scale,
-            self.COLOR_WHITE,
+            hud.primary_color(),
             thickness,
             cv2.LINE_AA,
         )
 
-        self._draw_label(
+        cv2.putText(
             frame,
             "km/h",
-            center_x,
-            center_y + hud.scale(28),
-            color=self.COLOR_MUTED,
+            (
+                start_x
+                + number_size[0]
+                + gap,
+                center_y
+                + unit_size[1] // 2,
+            ),
+            font,
+            unit_scale,
+            hud.muted_color(),
+            1,
+            cv2.LINE_AA,
         )
 
-    # ---------------------------------------------------------
-    # Foto
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
 
-    def _draw_photo(
+    def _draw_icon(
         self,
         frame,
         cell,
         row_y,
         row_h,
+        name,
     ):
-        center_x, center_y = self._cell_center(
+
+        center = self._cell_center(
             cell,
             row_y,
             row_h,
@@ -342,92 +465,13 @@ class ActionBarWidget:
 
         icons.draw_centered(
             frame,
-            "camera",
-            (
-                center_x,
-                center_y - hud.scale(5),
-            ),
-            hud.scale(38),
-            tint=self.COLOR_WHITE,
+            name,
+            center,
+            hud.icon_scale(40),
+            tint=hud.primary_color(),
         )
 
-        self._draw_label(
-            frame,
-            "FOTO",
-            center_x,
-            center_y + hud.scale(28),
-        )
-
-    # ---------------------------------------------------------
-    # Vídeos
-    # ---------------------------------------------------------
-
-    def _draw_gallery(
-        self,
-        frame,
-        cell,
-        row_y,
-        row_h,
-    ):
-        center_x, center_y = self._cell_center(
-            cell,
-            row_y,
-            row_h,
-        )
-
-        width = hud.scale(38)
-        height = hud.scale(27)
-
-        x1 = center_x - width // 2
-        y1 = (
-            center_y
-            - height // 2
-            - hud.scale(5)
-        )
-
-        cv2.rectangle(
-            frame,
-            (
-                x1,
-                y1,
-            ),
-            (
-                x1 + width,
-                y1 + height,
-            ),
-            self.COLOR_WHITE,
-            max(
-                1,
-                hud.scale(2),
-            ),
-            cv2.LINE_AA,
-        )
-
-        cv2.circle(
-            frame,
-            (
-                center_x,
-                y1 + height // 2,
-            ),
-            hud.scale(6),
-            self.COLOR_WHITE,
-            max(
-                1,
-                hud.scale(2),
-            ),
-            cv2.LINE_AA,
-        )
-
-        self._draw_label(
-            frame,
-            "VIDEOS",
-            center_x,
-            center_y + hud.scale(28),
-        )
-
-    # ---------------------------------------------------------
-    # Límite
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
 
     def _draw_speed_limit(
         self,
@@ -438,20 +482,13 @@ class ActionBarWidget:
         *,
         speed_limit,
     ):
-        center_x, center_y = self._cell_center(
-            cell,
-            row_y,
-            row_h,
-        )
 
-        icons.draw_centered(
-            frame,
-            "speed_limit",
-            (
-                center_x,
-                center_y - hud.scale(5),
-            ),
-            hud.scale(43),
+        center_x, center_y = (
+            self._cell_center(
+                cell,
+                row_y,
+                row_h,
+            )
         )
 
         value = max(
@@ -461,96 +498,80 @@ class ActionBarWidget:
             ),
         )
 
-        value_text = (
+        text = (
             str(value)
             if value > 0
-            else "--"
+            else "—"
         )
 
-        scale = max(
-            0.36,
-            0.52 * Layout.S,
+        radius = hud.icon_scale(20)
+
+        border = max(
+            hud.icon_scale(3),
+            3,
+        )
+
+        cv2.circle(
+            frame,
+            (
+                center_x,
+                center_y,
+            ),
+            radius,
+            (255, 255, 255),
+            -1,
+            cv2.LINE_AA,
+        )
+
+        cv2.circle(
+            frame,
+            (
+                center_x,
+                center_y,
+            ),
+            radius,
+            (0, 0, 230),
+            border,
+            cv2.LINE_AA,
+        )
+
+        font = hud.font_face()
+
+        scale = (
+            0.62
+            * Layout.S
+            * hud.text_factor()
         )
 
         thickness = max(
             1,
-            hud.scale(1),
+            hud.scale(2),
         )
 
         size = cv2.getTextSize(
-            value_text,
-            cv2.FONT_HERSHEY_DUPLEX,
+            text,
+            font,
             scale,
             thickness,
         )[0]
 
         cv2.putText(
             frame,
-            value_text,
+            text,
             (
-                center_x - size[0] // 2,
+                center_x
+                - size[0] // 2,
                 center_y
-                - hud.scale(5)
                 + size[1] // 2,
             ),
-            cv2.FONT_HERSHEY_DUPLEX,
+            font,
             scale,
-            (20, 20, 20),
+            (15, 15, 15),
             thickness,
             cv2.LINE_AA,
         )
 
-        self._draw_label(
-            frame,
-            "LIMITE",
-            center_x,
-            center_y + hud.scale(28),
-        )
-
-    # ---------------------------------------------------------
-    # Utilidades
-    # ---------------------------------------------------------
-
-    def _draw_label(
-        self,
-        frame,
-        text,
-        center_x,
-        baseline_y,
-        *,
-        color=None,
-    ):
-        label_color = (
-            color
-            if color is not None
-            else self.COLOR_MUTED
-        )
-
-        scale = max(
-            0.29,
-            0.38 * Layout.S,
-        )
-
-        size = cv2.getTextSize(
-            text,
-            cv2.FONT_HERSHEY_SIMPLEX,
-            scale,
-            1,
-        )[0]
-
-        cv2.putText(
-            frame,
-            text,
-            (
-                center_x - size[0] // 2,
-                baseline_y,
-            ),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            scale,
-            label_color,
-            1,
-            cv2.LINE_AA,
-        )
+    # -----------------------------------------------------
 
     @staticmethod
     def _cell_center(
@@ -558,6 +579,7 @@ class ActionBarWidget:
         row_y,
         row_h,
     ):
+
         left, right = cell
 
         return (
@@ -569,6 +591,7 @@ class ActionBarWidget:
     def _safe_int(
         value,
     ):
+
         try:
             return int(
                 round(

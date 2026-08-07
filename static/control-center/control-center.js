@@ -7,7 +7,9 @@ import {
     fetchParkingHistory,
     saveSettings,
     runStorageCleanup,
-    simulateParkingEvent
+    simulateParkingEvent,
+    fetchHudSettings,
+    saveHudSettings
 } from "./modules/api.js";
 
 import {
@@ -33,11 +35,16 @@ import {
 } from "./modules/parking.js";
 
 
+import {
+    renderHud
+} from "./modules/hud.js";
+
 const state = {
     settings: {},
     storage: {},
     parkingRuntime: {},
     parkingHistory: [],
+    hud: {},
     activeSection: "overview",
     dirty: false,
     parkingTimer: null
@@ -48,7 +55,8 @@ const titles = {
     overview: "Resumen",
     storage: "Almacenamiento",
     recording: "Grabación",
-    parking: "Modo Parking"
+    parking: "Modo Parking",
+    hud: "HUD"
 };
 
 
@@ -74,13 +82,15 @@ async function reloadData() {
             settingsResponse,
             storageResponse,
             parkingResponse,
-            historyResponse
+            historyResponse,
+            hudResponse
         ] = await Promise.all(
             [
                 fetchSettings(),
                 fetchStorageStatus(),
                 fetchParkingStatus(),
-                fetchParkingHistory(20)
+                fetchParkingHistory(20),
+                fetchHudSettings()
             ]
         );
 
@@ -98,6 +108,10 @@ async function reloadData() {
 
         state.parkingHistory = (
             historyResponse.events || []
+        );
+
+        state.hud = (
+            hudResponse.hud || {}
         );
 
         state.dirty = false;
@@ -184,6 +198,13 @@ function renderActiveSection() {
             state.parkingHistory
         );
 
+    } else if (
+        state.activeSection === "hud"
+    ) {
+        renderHud(
+            state.hud
+        );
+
     } else {
         renderOverview(
             state.settings,
@@ -194,6 +215,7 @@ function renderActiveSection() {
     bindEditableFields();
     bindStorageActions();
     bindParkingActions();
+    bindHudActions();
 }
 
 
@@ -520,3 +542,506 @@ async function executeCleanup(
         );
     }
 }
+
+
+function bindHudActions() {
+    const slider = document.getElementById(
+        "hudIconScale"
+    );
+
+    const value = document.getElementById(
+        "hudIconScaleValue"
+    );
+
+    const textSlider = document.getElementById(
+        "hudTextScale"
+    );
+
+    const textValue = document.getElementById(
+        "hudTextScaleValue"
+    );
+
+    if (!slider) {
+        return;
+    }
+
+    slider.addEventListener(
+        "input",
+        () => {
+            if (value) {
+                value.textContent =
+                    `${slider.value}%`;
+            }
+        }
+    );
+
+    slider.addEventListener(
+        "change",
+        saveHudSection
+    );
+
+
+    if (textSlider) {
+        textSlider.addEventListener(
+            "input",
+            () => {
+                if (textValue) {
+                    textValue.textContent =
+                        `${textSlider.value}%`;
+                }
+            }
+        );
+
+        textSlider.addEventListener(
+            "change",
+            saveHudSection
+        );
+    }
+
+    const font = document.getElementById(
+        "hudFont"
+    );
+
+    const color = document.getElementById(
+        "hudColor"
+    );
+
+    const mode = document.getElementById(
+        "hudMode"
+    );
+
+    const barColor = document.getElementById(
+        "hudBarColor"
+    );
+
+    const topBarScale = document.getElementById(
+        "hudTopBarScale"
+    );
+
+    const infoBarScale = document.getElementById(
+        "hudInfoBarScale"
+    );
+
+    const topOpacity = document.getElementById(
+        "hudTopOpacity"
+    );
+
+    const infoOpacity = document.getElementById(
+        "hudInfoOpacity"
+    );
+
+
+    const profile = document.getElementById(
+        "hudProfile"
+    );
+
+    const position = document.getElementById(
+        "hudInfoPosition"
+    );
+
+    if (font) {
+        font.addEventListener(
+            "change",
+            saveHudSection
+        );
+    }
+
+    if (color) {
+        color.addEventListener(
+            "change",
+            saveHudSection
+        );
+    }
+
+    if (mode) {
+        mode.addEventListener(
+            "change",
+            saveHudSection
+        );
+    }
+
+    if (profile) {
+        profile.addEventListener(
+            "change",
+            saveHudSection
+        );
+    }
+
+    if (position) {
+        position.addEventListener(
+            "change",
+            saveHudSection
+        );
+    }
+}
+
+
+async function saveHudSection() {
+    const slider = document.getElementById(
+        "hudIconScale"
+    );
+
+    const textSlider = document.getElementById(
+        "hudTextScale"
+    );
+
+    const font = document.getElementById(
+        "hudFont"
+    );
+
+    const color = document.getElementById(
+        "hudColor"
+    );
+
+    const mode = document.getElementById(
+        "hudMode"
+    );
+
+    const barColor = document.getElementById(
+        "hudBarColor"
+    );
+
+    const topBarScale = document.getElementById(
+        "hudTopBarScale"
+    );
+
+    const infoBarScale = document.getElementById(
+        "hudInfoBarScale"
+    );
+
+    const topOpacity = document.getElementById(
+        "hudTopOpacity"
+    );
+
+    const infoOpacity = document.getElementById(
+        "hudInfoOpacity"
+    );
+
+
+    const profile = document.getElementById(
+        "hudProfile"
+    );
+
+    const position = document.getElementById(
+        "hudInfoPosition"
+    );
+
+    try {
+        const payload = {
+            ...state.hud,
+
+            icon_scale:
+                Number(slider.value) / 100,
+
+            text_scale:
+                Number(textSlider.value) / 100,
+
+            font:
+                font.value,
+
+            color:
+                color.value,
+
+            mode:
+                mode.value,
+
+            bar_color:
+                barColor.value,
+
+            top_bar_scale:
+                Number(topBarScale.value) / 100,
+
+            info_bar_scale:
+                Number(infoBarScale.value) / 100,
+
+            top_opacity:
+                Number(topOpacity.value) / 100,
+
+            info_opacity:
+                Number(infoOpacity.value) / 100,
+
+            show:
+                Object.fromEntries(
+                    Array.from(
+                        document.querySelectorAll(
+                            "[data-hud-visible]"
+                        )
+                    ).map(
+                        element => [
+                            element.dataset.hudVisible,
+                            element.checked
+                        ]
+                    )
+                ),
+
+
+            profile:
+                profile.value,
+
+            info_position:
+                position.value
+        };
+
+        const response =
+            await saveHudSettings(
+                payload
+            );
+
+        state.hud = (
+            response.hud || payload
+        );
+
+        showMessage(
+            "Ajustes del HUD guardados.",
+            "success"
+        );
+
+    } catch (error) {
+        showMessage(
+            error.message,
+            "error"
+        );
+    }
+
+    updateHudPreview();
+}
+
+
+function updateHudPreview() {
+    const preview = document.getElementById(
+        "hudPreview"
+    );
+
+    if (!preview) {
+        return;
+    }
+
+    const iconSlider = document.getElementById(
+        "hudIconScale"
+    );
+
+    const textSlider = document.getElementById(
+        "hudTextScale"
+    );
+
+    const font = document.getElementById(
+        "hudFont"
+    );
+
+    const color = document.getElementById(
+        "hudColor"
+    );
+
+    const mode = document.getElementById(
+        "hudMode"
+    );
+
+    const barColor = document.getElementById(
+        "hudBarColor"
+    );
+
+    const topBarScale = document.getElementById(
+        "hudTopBarScale"
+    );
+
+    const infoBarScale = document.getElementById(
+        "hudInfoBarScale"
+    );
+
+    const topOpacity = document.getElementById(
+        "hudTopOpacity"
+    );
+
+    const infoOpacity = document.getElementById(
+        "hudInfoOpacity"
+    );
+
+
+    const iconScale = (
+        Number(iconSlider?.value || 100) / 100
+    );
+
+    const textScale = (
+        Number(textSlider?.value || 100) / 100
+    );
+
+    const colors = {
+        white: "#ffffff",
+        green: "#78ff78",
+        amber: "#ffbe00",
+        ice_blue: "#a0dcff",
+        red: "#ff5a5a"
+    };
+
+    const fonts = {
+        simplex:
+            "Arial, sans-serif",
+
+        duplex:
+            "'Trebuchet MS', Arial, sans-serif",
+
+        triplex:
+            "Georgia, serif",
+
+        complex:
+            "'Courier New', monospace"
+    };
+
+    preview.style.setProperty(
+        "--preview-icon-scale",
+        iconScale
+    );
+
+    preview.style.setProperty(
+        "--preview-text-scale",
+        textScale
+    );
+
+    preview.style.setProperty(
+        "--preview-color",
+        colors[color?.value] || "#ffffff"
+    );
+
+    preview.style.setProperty(
+        "--preview-font",
+        fonts[font?.value]
+        || "'Trebuchet MS', Arial, sans-serif"
+    );
+
+    let displayMode = (
+        mode?.value || "auto"
+    );
+
+    if (displayMode === "auto") {
+        const hour = new Date().getHours();
+
+        displayMode = (
+            hour >= 7 && hour < 20
+            ? "day"
+            : "night"
+        );
+    }
+
+    preview.classList.toggle(
+        "preview-night",
+        displayMode === "night"
+    );
+
+    preview.classList.toggle(
+        "preview-day",
+        displayMode === "day"
+    );
+}
+
+
+document.addEventListener(
+    "input",
+    (event) => {
+        if (
+            event.target.closest(
+                "#hudIconScale, #hudTextScale"
+            )
+        ) {
+            updateHudPreview();
+        }
+    }
+);
+
+document.addEventListener(
+    "change",
+    (event) => {
+        if (
+            event.target.closest(
+                "#hudFont, #hudColor, #hudMode, "
+                + "#hudProfile, #hudInfoPosition"
+            )
+        ) {
+            updateHudPreview();
+        }
+    }
+);
+
+
+document.addEventListener(
+    "input",
+    (event) => {
+        if (
+            event.target.id === "hudTopOpacity"
+            || event.target.id === "hudInfoOpacity"
+        ) {
+            const id = (
+                event.target.id === "hudTopOpacity"
+                ? "hudTopOpacityValue"
+                : "hudInfoOpacityValue"
+            );
+
+            const value = document.getElementById(id);
+
+            if (value) {
+                value.textContent =
+                    `${event.target.value}%`;
+            }
+
+            updateHudPreview();
+        }
+    }
+);
+
+document.addEventListener(
+    "change",
+    (event) => {
+        if (
+            event.target.id === "hudBarColor"
+            || event.target.matches(
+                "[data-hud-visible]"
+            )
+        ) {
+            saveHudSection();
+            updateHudPreview();
+        }
+    }
+);
+
+
+document.addEventListener(
+    "input",
+    (event) => {
+        const map = {
+            hudTopBarScale:
+                "hudTopBarScaleValue",
+
+            hudInfoBarScale:
+                "hudInfoBarScaleValue"
+        };
+
+        const outputId = map[event.target.id];
+
+        if (!outputId) {
+            return;
+        }
+
+        const output =
+            document.getElementById(
+                outputId
+            );
+
+        if (output) {
+            output.textContent =
+                `${event.target.value}%`;
+        }
+
+        updateHudPreview();
+    }
+);
+
+document.addEventListener(
+    "change",
+    (event) => {
+        if (
+            event.target.id === "hudTopBarScale"
+            || event.target.id === "hudInfoBarScale"
+        ) {
+            saveHudSection();
+        }
+    }
+);

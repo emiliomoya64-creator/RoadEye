@@ -399,8 +399,11 @@ class IconManager:
         tint: tuple[int, int, int],
     ) -> np.ndarray:
         """
-        Conserva la transparencia y utiliza el brillo original
-        como intensidad del color seleccionado.
+        Colorea el icono usando su canal alfa
+        como máscara.
+
+        De esta forma funcionan correctamente
+        iconos PNG negros, blancos o grises.
         """
 
         blue, green, red = (
@@ -414,68 +417,37 @@ class IconManager:
             for channel in tint
         )
 
-        alpha = icon[
-            :,
-            :,
-            3,
-        ].copy()
-
-        original_bgr = icon[
-            :,
-            :,
-            :3,
-        ]
-
-        intensity = cv2.cvtColor(
-            original_bgr,
-            cv2.COLOR_BGR2GRAY,
-        ).astype(
-            np.float32
-        )
-
-        intensity = (
-            intensity / 255.0
-        )[:, :, None]
-
-        tint_array = np.array(
-            [
-                blue,
-                green,
-                red,
-            ],
-            dtype=np.float32,
-        ).reshape(
-            1,
-            1,
-            3,
-        )
-
-        tinted_bgr = (
-            intensity
-            * tint_array
-        )
-
-        result = np.empty_like(
+        result = np.zeros_like(
             icon
         )
 
         result[
             :,
             :,
-            :3,
-        ] = np.clip(
-            tinted_bgr,
-            0,
-            255,
-        ).astype(
-            np.uint8
-        )
+            0
+        ] = blue
 
         result[
             :,
             :,
-            3,
-        ] = alpha
+            1
+        ] = green
+
+        result[
+            :,
+            :,
+            2
+        ] = red
+
+        result[
+            :,
+            :,
+            3
+        ] = icon[
+            :,
+            :,
+            3
+        ]
 
         return result
 

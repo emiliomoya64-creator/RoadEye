@@ -115,3 +115,32 @@ export function runStorageCleanup(
         }
     );
 }
+
+
+
+export function fetchHudSettings() {
+    return requestJson(
+        "/api/hud/settings"
+    );
+}
+
+
+export function saveHudSettings(
+    settings
+) {
+    return requestJson(
+        "/api/hud/settings",
+        {
+            method: "PUT",
+
+            headers: {
+                "Content-Type":
+                    "application/json"
+            },
+
+            body: JSON.stringify(
+                settings
+            )
+        }
+    );
+}

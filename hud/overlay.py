@@ -25,6 +25,14 @@ class HUDOverlay:
             info_position=settings[
                 "info_position"
             ],
+            top_bar_scale=settings.get(
+                "top_bar_scale",
+                1.0,
+            ),
+            info_bar_scale=settings.get(
+                "info_bar_scale",
+                1.0,
+            ),
         )
 
         show = settings["show"]
@@ -129,7 +137,7 @@ class HUDOverlay:
             y=Layout.TOP_ROW_Y,
             w=Layout.W,
             h=Layout.TOP_ROW_HEIGHT,
-            color=self.TOP_COLOR,
+            color=hud.bar_color(),
             alpha=top_opacity,
         )
 
@@ -139,7 +147,7 @@ class HUDOverlay:
             y=Layout.INFO_ROW_Y,
             w=Layout.W,
             h=Layout.INFO_ROW_HEIGHT,
-            color=self.INFO_COLOR,
+            color=hud.bar_color(),
             alpha=info_opacity,
         )
 
