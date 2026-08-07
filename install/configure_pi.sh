@@ -256,11 +256,10 @@ configure_usb_host() {
 
 
 configure_hdmi_cmdline() {
-    log "Configurando HDMI 1280x720 a 60 Hz..."
+    log "Configurando HDMI automático..."
 
     local current_line
     local cleaned_line
-    local new_line
 
     current_line="$(
         tr '\n' ' ' < "$CMDLINE_FILE"
@@ -276,11 +275,9 @@ configure_hdmi_cmdline() {
                 's/^[[:space:]]+|[[:space:]]+$//g'
     )"
 
-    new_line="${cleaned_line} video=HDMI-A-1:1280x720M@60"
+    printf '%s\n' "$cleaned_line" > "$CMDLINE_FILE"
 
-    printf '%s\n' "$new_line" > "$CMDLINE_FILE"
-
-    success "HDMI-A-1 configurado a 1280x720M@60."
+    success         "HDMI automático: el monitor seleccionará su modo preferido."
 }
 
 
@@ -372,15 +369,15 @@ verify_boot_config() {
 verify_cmdline() {
     log "Comprobando cmdline.txt..."
 
-    if grep -q \
-        'video=HDMI-A-1:1280x720M@60' \
+    if grep -Eq \
+        '(^|[[:space:]])video=HDMI-A-[^[:space:]]+' \
         "$CMDLINE_FILE"
     then
-        success \
-            "Resolución HDMI configurada."
-    else
         fatal \
-            "No aparece la configuración HDMI esperada."
+            "Existe una resolución HDMI forzada en cmdline.txt."
+    else
+        success \
+            "HDMI automático: sin resolución forzada."
     fi
 
     if grep -Eq \
