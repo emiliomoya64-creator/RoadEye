@@ -211,17 +211,6 @@ class HUDEngine:
         cv2.putText(
             frame,
             text,
-            (x + self.scale(2), y + self.scale(2)),
-            font,
-            scale,
-            shadow,
-            thickness + 2,
-            cv2.LINE_AA
-        )
-
-        cv2.putText(
-            frame,
-            text,
             (x, y),
             font,
             scale,

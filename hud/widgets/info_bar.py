@@ -59,24 +59,28 @@ class InfoBarWidget:
 
         # Segmentos de la barra inferior.
         sections = {
+            # La carretera recibe casi la mitad
+            # de toda la barra inferior.
             "road": (
                 0.02,
-                0.36,
+                0.48,
             ),
+
+            # Bloque derecho más compacto.
             "coordinates": (
-                0.37,
-                0.62,
+                0.49,
+                0.68,
             ),
             "date": (
-                0.63,
-                0.79,
+                0.69,
+                0.82,
             ),
             "time": (
-                0.80,
-                0.94,
+                0.83,
+                0.93,
             ),
             "settings": (
-                0.95,
+                0.94,
                 0.995,
             ),
         }
@@ -88,7 +92,9 @@ class InfoBarWidget:
                 center_y,
                 "road",
                 road_text,
-                max_chars=31,
+                max_chars=40,
+                text_scale=0.58,
+                text_thickness=2,
             )
 
         if is_visible("coordinates"):
@@ -140,7 +146,7 @@ class InfoBarWidget:
                     (left + right) // 2,
                     center_y,
                 ),
-                hud.icon_scale(25),
+                hud.icon_scale(32),
                 tint=hud.primary_color(),
             )
 
@@ -156,6 +162,8 @@ class InfoBarWidget:
         *,
         max_chars,
         muted=False,
+        text_scale=0.47,
+        text_thickness=1,
     ):
 
         left = int(
@@ -168,7 +176,7 @@ class InfoBarWidget:
             * section[1]
         )
 
-        icon_size = hud.icon_scale(25)
+        icon_size = hud.icon_scale(32)
 
         icon_x = (
             left
@@ -221,7 +229,7 @@ class InfoBarWidget:
         fitted = self._fit_text(
             safe_text,
             available,
-            base_scale=0.47,
+            base_scale=text_scale,
         )
 
         hud.shadow_text(
@@ -232,9 +240,9 @@ class InfoBarWidget:
                 center_y
                 + hud.scale(6),
             ),
-            scale=0.47,
+            scale=text_scale,
             color=color,
-            thickness=1,
+            thickness=text_thickness,
         )
 
     # -----------------------------------------------------

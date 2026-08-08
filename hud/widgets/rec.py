@@ -29,7 +29,7 @@ class RecWidget:
         hud.filled_circle(
             frame,
             Layout.REC,
-            radius=8,
+            radius=16,
             color=self._get_dot_color(recording),
         )
 
@@ -37,7 +37,7 @@ class RecWidget:
             frame,
             "REC",
             (
-                Layout.REC[0] + hud.scale(28),
+                Layout.REC[0] + hud.icon_scale(16) + hud.scale(12),
                 Layout.REC[1] + hud.scale(6),
             ),
             scale=0.65,
@@ -48,7 +48,7 @@ class RecWidget:
             frame,
             self._get_status_text(recording),
             (
-                Layout.REC[0] + hud.scale(102),
+                Layout.REC[0] + hud.scale(125),
                 Layout.REC[1] + hud.scale(6),
             ),
             scale=0.58,

@@ -190,12 +190,43 @@ class ActionBarWidget:
             else hud.muted_color()
         )
 
-        satellite_size = hud.icon_scale(34)
+        satellite_count = max(
+            0,
+            self._safe_int(
+                satellites
+            ),
+        )
+
+        # El conjunto GPS se trata visualmente
+        # como una sola familia:
+        #
+        # señal | satélite | número
+
+        group_center = (
+            left
+            + (right - left) // 2
+        )
+
+        signal_x = (
+            group_center
+            - hud.icon_scale(27)
+        )
 
         satellite_x = (
-            left
-            + (right - left) // 4
+            group_center
+            + hud.icon_scale(6)
         )
+
+        self._draw_signal_bars(
+            frame,
+            signal_x,
+            center_y,
+            satellites=satellite_count,
+            gps_fix=gps_fix,
+            color=color,
+        )
+
+        satellite_size = hud.icon_scale(32)
 
         icons.draw_centered(
             frame,
@@ -208,43 +239,19 @@ class ActionBarWidget:
             tint=color,
         )
 
-        satellite_count = max(
-            0,
-            self._safe_int(
-                satellites
-            ),
-        )
-
         hud.shadow_text(
             frame,
             str(satellite_count),
             (
                 satellite_x
                 + satellite_size // 2
-                + hud.scale(6),
+                + hud.scale(5),
                 center_y
                 + hud.scale(7),
             ),
             scale=0.55,
             color=color,
             thickness=2,
-        )
-
-        signal_x = (
-            left
-            + int(
-                (right - left)
-                * 0.76
-            )
-        )
-
-        self._draw_signal_bars(
-            frame,
-            signal_x,
-            center_y,
-            satellites=satellite_count,
-            gps_fix=gps_fix,
-            color=color,
         )
 
     # -----------------------------------------------------
