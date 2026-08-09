@@ -545,9 +545,15 @@ async function updateStatus() {
 
         const data = await response.json();
 
-        connectionStatus.textContent = (
-            "En línea"
-        );
+        if (
+            !connectionStatus.textContent.includes(
+                "WebRTC"
+            )
+        ) {
+            connectionStatus.textContent = (
+                "En línea"
+            );
+        }
 
         connectionStatus.classList.add(
             "online"
@@ -4475,3 +4481,351 @@ function stopContinuousTripPlayback(
         popupManager.close();
     }
 }
+
+
+// ============================================================
+// RoadEye - cámara en directo WebRTC
+// ============================================================
+
+let roadEyePeerConnection = null;
+let roadEyeReconnectTimer = null;
+let roadEyeWebRTCConnecting = false;
+
+
+function roadEyeConnectionStatus(message) {
+    const status = document.getElementById(
+        "connectionStatus"
+    );
+
+    if (status) {
+        status.textContent = message;
+    }
+}
+
+
+async function waitForIceGatheringComplete(pc) {
+    if (pc.iceGatheringState === "complete") {
+        return;
+    }
+
+    await new Promise((resolve) => {
+        const checkState = () => {
+            if (
+                pc.iceGatheringState
+                === "complete"
+            ) {
+                pc.removeEventListener(
+                    "icegatheringstatechange",
+                    checkState
+                );
+
+                resolve();
+            }
+        };
+
+        pc.addEventListener(
+            "icegatheringstatechange",
+            checkState
+        );
+    });
+}
+
+
+function scheduleRoadEyeReconnect() {
+    if (roadEyeReconnectTimer) {
+        return;
+    }
+
+    roadEyeReconnectTimer = window.setTimeout(
+        async () => {
+            roadEyeReconnectTimer = null;
+
+            await startRoadEyeWebRTC();
+        },
+        2000
+    );
+}
+
+
+async function stopRoadEyeWebRTC() {
+    if (roadEyePeerConnection) {
+        try {
+            roadEyePeerConnection.close();
+        } catch (error) {
+            console.warn(
+                "Error cerrando WebRTC:",
+                error
+            );
+        }
+
+        roadEyePeerConnection = null;
+    }
+
+    const video = document.getElementById(
+        "videoStream"
+    );
+
+    if (video) {
+        video.srcObject = null;
+    }
+}
+
+
+async function startRoadEyeWebRTC() {
+    if (roadEyeWebRTCConnecting) {
+        console.log(
+            "RoadEye WebRTC: negociación ya en curso"
+        );
+        return;
+    }
+
+    if (
+        roadEyePeerConnection
+        && (
+            roadEyePeerConnection.connectionState
+            === "connected"
+            || roadEyePeerConnection.connectionState
+            === "connecting"
+        )
+    ) {
+        console.log(
+            "RoadEye WebRTC: conexión ya activa"
+        );
+        return;
+    }
+
+    roadEyeWebRTCConnecting = true;
+    const video = document.getElementById(
+        "videoStream"
+    );
+
+    if (!video) {
+        return;
+    }
+
+    await stopRoadEyeWebRTC();
+
+    roadEyeConnectionStatus(
+        "Conectando WebRTC…"
+    );
+
+    const pc = new RTCPeerConnection({
+        bundlePolicy: "max-bundle"
+    });
+
+    roadEyePeerConnection = pc;
+
+    pc.addTransceiver(
+        "video",
+        {
+            direction: "recvonly"
+        }
+    );
+
+    pc.addEventListener(
+        "track",
+        (event) => {
+            if (event.track.kind !== "video") {
+                return;
+            }
+
+            if (event.streams.length > 0) {
+                video.srcObject = event.streams[0];
+            } else {
+                video.srcObject = new MediaStream(
+                    [event.track]
+                );
+            }
+
+            video.play().catch(
+                () => {}
+            );
+
+            roadEyeConnectionStatus(
+                "WebRTC · Directo"
+            );
+        }
+    );
+
+    pc.addEventListener(
+        "connectionstatechange",
+        () => {
+            const state = pc.connectionState;
+
+            console.log(
+                "RoadEye WebRTC:",
+                state
+            );
+
+            if (state === "connected") {
+                roadEyeWebRTCConnecting = false;
+
+                if (roadEyeReconnectTimer) {
+                    clearTimeout(
+                        roadEyeReconnectTimer
+                    );
+
+                    roadEyeReconnectTimer = null;
+                }
+                roadEyeConnectionStatus(
+                    "WebRTC · Conectado"
+                );
+
+                return;
+            }
+
+            if (state === "connecting") {
+                roadEyeConnectionStatus(
+                    "Conectando WebRTC…"
+                );
+
+                return;
+            }
+
+            if (state === "failed") {
+                roadEyeConnectionStatus(
+                    "Reconectando…"
+                );
+
+                scheduleRoadEyeReconnect();
+                return;
+            }
+
+            if (state === "disconnected") {
+                roadEyeConnectionStatus(
+                    "WebRTC · Interrumpido"
+                );
+
+                // ICE puede pasar temporalmente por
+                // disconnected y recuperarse solo.
+                // No creamos inmediatamente otro peer.
+                window.setTimeout(
+                    () => {
+                        if (
+                            pc.connectionState
+                            === "disconnected"
+                            && roadEyePeerConnection
+                            === pc
+                        ) {
+                            roadEyeConnectionStatus(
+                                "Reconectando…"
+                            );
+
+                            scheduleRoadEyeReconnect();
+                        }
+                    },
+                    5000
+                );
+
+                return;
+            }
+
+            if (
+                state === "closed"
+                && roadEyePeerConnection === pc
+            ) {
+                roadEyePeerConnection = null;
+            }
+        }
+    );
+
+    try {
+        const offer = await pc.createOffer();
+
+        await pc.setLocalDescription(
+            offer
+        );
+
+        await waitForIceGatheringComplete(
+            pc
+        );
+
+        const response = await fetch(
+            "/api/webrtc/offer",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+                body: JSON.stringify({
+                    sdp: pc.localDescription.sdp,
+                    type: pc.localDescription.type
+                })
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                "Servidor WebRTC: "
+                + response.status
+            );
+        }
+
+        const answer = await response.json();
+
+        if (
+            roadEyePeerConnection
+            !== pc
+        ) {
+            pc.close();
+            return;
+        }
+
+        await pc.setRemoteDescription(
+            answer
+        );
+
+    } catch (error) {
+        roadEyeWebRTCConnecting = false;
+
+        console.error(
+            "RoadEye WebRTC error:",
+            error
+        );
+
+        roadEyeConnectionStatus(
+            "Error WebRTC"
+        );
+
+        try {
+            pc.close();
+        } catch (_) {
+        }
+
+        if (
+            roadEyePeerConnection
+            === pc
+        ) {
+            roadEyePeerConnection = null;
+        }
+
+        scheduleRoadEyeReconnect();
+    }
+}
+
+
+window.addEventListener(
+    "load",
+    () => {
+        startRoadEyeWebRTC();
+    }
+);
+
+
+window.addEventListener(
+    "beforeunload",
+    () => {
+        if (roadEyeReconnectTimer) {
+            clearTimeout(
+                roadEyeReconnectTimer
+            );
+
+            roadEyeReconnectTimer = null;
+        }
+
+        if (roadEyePeerConnection) {
+            roadEyePeerConnection.close();
+        }
+    }
+);

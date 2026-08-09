@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 import cv2
 from fastapi import FastAPI, Request
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -16,6 +17,7 @@ from core.config_manager import config
 from core.display_buffer import display_buffer
 from core.roadeye_services import roadeye_services
 from core.storage_manager import storage_manager
+from web.webrtc import create_answer, close_all
 
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,7 @@ async def lifespan(app: FastAPI):
             "Deteniendo RoadEye mediante ServiceManager"
         )
 
+        await close_all()
         storage_manager.stop()
         roadeye_services.stop_all()
 
@@ -105,6 +108,21 @@ async def settings_page(
 @app.get("/api/services")
 async def services_status():
     return roadeye_services.summary()
+
+
+class WebRTCOffer(BaseModel):
+    sdp: str
+    type: str
+
+
+@app.post("/api/webrtc/offer")
+async def webrtc_offer(
+    offer: WebRTCOffer,
+):
+    return await create_answer(
+        offer.sdp,
+        offer.type,
+    )
 
 
 def generate():

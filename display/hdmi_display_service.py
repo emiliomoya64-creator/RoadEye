@@ -397,6 +397,18 @@ class HDMIDisplayService:
 
         source_height, source_width = frame.shape[:2]
 
+        # Camino rápido:
+        # RoadEye ya renderiza normalmente a la resolución HDMI.
+        # Evitamos resize + canvas + copia completa en cada frame.
+        if (
+            source_width == self.width
+            and source_height == self.height
+            and frame.ndim == 3
+            and frame.shape[2] == 3
+        ):
+            return np.ascontiguousarray(frame)
+
+        # Camino de compatibilidad para cualquier resolución distinta.
         scale = min(
             self.width / source_width,
             self.height / source_height,

@@ -396,7 +396,7 @@ class ActionBarWidget:
         )[0]
 
         unit_scale = (
-            0.44
+            0.58
             * Layout.S
             * hud.text_factor()
         )

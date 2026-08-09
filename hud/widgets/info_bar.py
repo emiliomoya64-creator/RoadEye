@@ -9,6 +9,63 @@ from hud.icon_manager import icons
 from hud.layout import Layout
 
 
+def _clean_hud_text(value):
+    text = str(value or "---")
+
+    replacements = {
+        "á": "a",
+        "à": "a",
+        "ä": "a",
+        "â": "a",
+        "Á": "A",
+        "À": "A",
+        "é": "e",
+        "è": "e",
+        "ë": "e",
+        "ê": "e",
+        "É": "E",
+        "È": "E",
+        "í": "i",
+        "ì": "i",
+        "ï": "i",
+        "î": "i",
+        "Í": "I",
+        "ó": "o",
+        "ò": "o",
+        "ö": "o",
+        "ô": "o",
+        "Ó": "O",
+        "Ò": "O",
+        "ú": "u",
+        "ù": "u",
+        "ü": "u",
+        "û": "u",
+        "Ú": "U",
+        "Ü": "U",
+        "ñ": "n",
+        "Ñ": "N",
+        "ç": "c",
+        "Ç": "C",
+        "·": ".",
+    }
+
+    for original, replacement in replacements.items():
+        text = text.replace(
+            original,
+            replacement,
+        )
+
+    # Si la fuente recibe literalmente caracteres
+    # de sustitución, no los mostramos.
+    text = text.replace("�", "")
+    text = text.replace("?", "")
+
+    # Eliminar dobles espacios que puedan quedar.
+    text = " ".join(text.split())
+
+    return text
+
+
 class InfoBarWidget:
 
     def draw(
@@ -59,28 +116,24 @@ class InfoBarWidget:
 
         # Segmentos de la barra inferior.
         sections = {
-            # La carretera recibe casi la mitad
-            # de toda la barra inferior.
             "road": (
                 0.02,
-                0.48,
+                0.56,
             ),
-
-            # Bloque derecho más compacto.
             "coordinates": (
-                0.49,
-                0.68,
+                0.57,
+                0.73,
             ),
             "date": (
-                0.69,
-                0.82,
+                0.74,
+                0.84,
             ),
             "time": (
-                0.83,
-                0.93,
+                0.85,
+                0.92,
             ),
             "settings": (
-                0.94,
+                0.93,
                 0.995,
             ),
         }
@@ -91,7 +144,7 @@ class InfoBarWidget:
                 sections["road"],
                 center_y,
                 "road",
-                road_text,
+                _clean_hud_text(road_text),
                 max_chars=40,
                 text_scale=0.58,
                 text_thickness=2,
@@ -105,7 +158,6 @@ class InfoBarWidget:
                 "coordinates",
                 coordinates,
                 max_chars=24,
-                muted=True,
             )
 
         if is_visible("date"):
@@ -113,7 +165,7 @@ class InfoBarWidget:
                 frame,
                 sections["date"],
                 center_y,
-                "calendar",
+                None,
                 date_text,
                 max_chars=10,
             )
@@ -123,7 +175,7 @@ class InfoBarWidget:
                 frame,
                 sections["time"],
                 center_y,
-                "clock",
+                None,
                 time_text,
                 max_chars=5,
             )
@@ -189,16 +241,17 @@ class InfoBarWidget:
             else hud.primary_color()
         )
 
-        icons.draw_centered(
-            frame,
-            icon_name,
-            (
-                icon_x,
-                center_y,
-            ),
-            icon_size,
-            tint=color,
-        )
+        if icon_name:
+            icons.draw_centered(
+                frame,
+                icon_name,
+                (
+                    icon_x,
+                    center_y,
+                ),
+                icon_size,
+                tint=color,
+            )
 
         safe_text = str(text)
 
@@ -215,8 +268,11 @@ class InfoBarWidget:
 
         text_x = (
             left
-            + icon_size
-            + hud.scale(8)
+            + (
+                icon_size + hud.scale(8)
+                if icon_name
+                else hud.scale(4)
+            )
         )
 
         available = max(
