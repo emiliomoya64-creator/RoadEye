@@ -1,0 +1,28 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.roadeye.app-mergeDebugResources-1:/values/values.xml",
+            "map": [
+                {
+                    "source": "/home/emilio/PiDash/android/RoadEyeApp/app/src/main/res/values/styles.xml",
+                    "from": {
+                        "startLines": "4",
+                        "startColumns": "4",
+                        "startOffsets": "57",
+                        "endLines": "37",
+                        "endColumns": "12",
+                        "endOffsets": "750"
+                    },
+                    "to": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "32",
+                        "endColumns": "12",
+                        "endOffsets": "727"
+                    }
+                }
+            ]
+        }
+    ]
+}

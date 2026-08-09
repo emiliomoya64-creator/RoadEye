@@ -1,0 +1,9 @@
+com.roadeye.app
+id errorPanel
+id errorText
+id errorTitle
+id retryButton
+id roadeyeWebView
+layout activity_main
+style Theme_RoadEye
+xml network_security_config

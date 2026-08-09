@@ -1,0 +1,8 @@
+com.roadeye.app-pngs-0 /home/emilio/PiDash/android/RoadEyeApp/app/build/generated/res/pngs/debug
+com.roadeye.app-updated_navigation_xml-1 /home/emilio/PiDash/android/RoadEyeApp/app/build/generated/updated_navigation_xml/debug
+com.roadeye.app-packageDebugResources-2 /home/emilio/PiDash/android/RoadEyeApp/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.roadeye.app-packageDebugResources-3 /home/emilio/PiDash/android/RoadEyeApp/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.roadeye.app-debug-4 /home/emilio/PiDash/android/RoadEyeApp/app/build/intermediates/merged_res/debug/mergeDebugResources
+com.roadeye.app-debug-5 /home/emilio/PiDash/android/RoadEyeApp/app/src/debug/res
+com.roadeye.app-main-6 /home/emilio/PiDash/android/RoadEyeApp/app/src/main/res
+gradleHome-0 /home/emilio/.gradle

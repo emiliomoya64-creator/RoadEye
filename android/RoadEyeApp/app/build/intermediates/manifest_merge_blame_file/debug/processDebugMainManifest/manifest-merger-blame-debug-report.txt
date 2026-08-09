@@ -1,0 +1,62 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.roadeye.app"
+4    android:versionCode="1"
+5    android:versionName="0.1.0" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="26"
+8-->INJECTED
+9        android:targetSdkVersion="36" />
+9-->INJECTED
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:7:5-9:7
+11-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:8:9-51
+12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+12-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:11:5-13:7
+12-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:12:9-63
+13    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+13-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:15:5-17:7
+13-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:16:9-60
+14
+15    <application
+15-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:19:5-48:19
+16        android:allowBackup="true"
+16-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:20:9-35
+17        android:debuggable="true"
+18        android:extractNativeLibs="false"
+18-->INJECTED
+19        android:label="RoadEye"
+19-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:21:9-32
+20        android:networkSecurityConfig="@xml/network_security_config"
+20-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:24:9-69
+21        android:theme="@style/Theme.RoadEye"
+21-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:22:9-45
+22        android:usesCleartextTraffic="true" >
+22-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:23:9-44
+23        <activity
+23-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:27:9-46:20
+24            android:name="com.roadeye.app.MainActivity"
+24-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:28:13-41
+25            android:configChanges="orientation|screenSize|keyboardHidden"
+25-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:30:13-74
+26            android:exported="true"
+26-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:31:13-36
+27            android:screenOrientation="unspecified" >
+27-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:29:13-52
+28            <intent-filter>
+28-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:34:13-44:29
+29                <action android:name="android.intent.action.MAIN" />
+29-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:36:17-38:19
+29-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:37:21-62
+30
+31                <category android:name="android.intent.category.LAUNCHER" />
+31-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:40:17-42:19
+31-->/home/emilio/PiDash/android/RoadEyeApp/app/src/main/AndroidManifest.xml:41:21-68
+32            </intent-filter>
+33        </activity>
+34    </application>
+35
+36</manifest>

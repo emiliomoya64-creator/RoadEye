@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.roadeye.app-debug-3:/layout_activity_main.xml.flat",
+        "source": "com.roadeye.app-main-5:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.roadeye.app-debug-3:/xml_network_security_config.xml.flat",
+        "source": "com.roadeye.app-main-5:/xml/network_security_config.xml"
+    }
+]

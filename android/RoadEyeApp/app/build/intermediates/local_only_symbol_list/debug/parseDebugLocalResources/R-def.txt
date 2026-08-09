@@ -1,0 +1,10 @@
+R_DEF: Internal format may change without notice
+local
+id errorPanel
+id errorText
+id errorTitle
+id retryButton
+id roadeyeWebView
+layout activity_main
+style Theme.RoadEye
+xml network_security_config
