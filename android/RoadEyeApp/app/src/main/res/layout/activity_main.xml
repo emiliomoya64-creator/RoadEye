@@ -18,7 +18,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="18dp"
+        android:layout_marginEnd="20dp"
         android:text="Cámara"
         android:textAllCaps="false"
         android:elevation="10dp"
