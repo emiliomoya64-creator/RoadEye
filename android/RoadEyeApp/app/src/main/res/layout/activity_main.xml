@@ -22,6 +22,8 @@
         android:text="Cámara"
         android:textAllCaps="false"
         android:elevation="10dp"
+    
+        android:layout_marginBottom="64dp"
     />
 
     <LinearLayout

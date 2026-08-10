@@ -307,7 +307,7 @@ public class MainActivity extends Activity {
                         inset: 0 !important;
                         width: 100vw !important;
                         height: 100vh !important;
-                        object-fit: contain !important;
+                        object-fit: cover !important;
                         background: #000 !important;
                     }
                 `;
