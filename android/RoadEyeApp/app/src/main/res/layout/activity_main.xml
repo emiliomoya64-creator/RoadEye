@@ -13,6 +13,17 @@
         android:layout_height="match_parent"
     />
 
+    <Button
+        android:id="@+id/cameraFullscreenButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="18dp"
+        android:text="Cámara"
+        android:textAllCaps="false"
+        android:elevation="10dp"
+    />
+
     <LinearLayout
         android:id="@+id/errorPanel"
         android:layout_width="match_parent"

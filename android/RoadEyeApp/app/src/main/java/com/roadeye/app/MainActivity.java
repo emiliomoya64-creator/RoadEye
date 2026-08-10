@@ -2,9 +2,12 @@ package com.roadeye.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.webkit.WebChromeClient;
@@ -23,6 +26,7 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private LinearLayout errorPanel;
+    private boolean cameraFullscreen = false;
 
 
     @Override
@@ -49,10 +53,20 @@ public class MainActivity extends Activity {
             R.id.retryButton
         );
 
+        Button cameraFullscreenButton = findViewById(
+            R.id.cameraFullscreenButton
+        );
+
         configureWebView();
 
         retryButton.setOnClickListener(
             view -> loadRoadEye()
+        );
+
+        cameraFullscreenButton.setOnClickListener(
+            view -> toggleCameraFullscreen(
+                cameraFullscreenButton
+            )
         );
 
         loadRoadEye();
@@ -184,6 +198,230 @@ public class MainActivity extends Activity {
     }
 
 
+    private void toggleCameraFullscreen(
+        Button button
+    ) {
+        if (cameraFullscreen) {
+            exitCameraFullscreen(
+                button
+            );
+        } else {
+            enterCameraFullscreen(
+                button
+            );
+        }
+    }
+
+
+    private void enterCameraFullscreen(
+        Button button
+    ) {
+        cameraFullscreen = true;
+
+        setRequestedOrientation(
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        );
+
+        hideSystemBars();
+
+        webView.evaluateJavascript(
+            """
+            (() => {
+                const video =
+                    document.getElementById('videoStream');
+
+                if (!video) {
+                    return;
+                }
+
+                document.body.dataset.roadeyeFullscreen =
+                    '1';
+
+                const style =
+                    document.createElement('style');
+
+                style.id =
+                    'roadeye-app-fullscreen-style';
+
+                style.textContent = `
+                    html,
+                    body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        width: 100% !important;
+                        height: 100% !important;
+                        overflow: hidden !important;
+                        background: #000 !important;
+                    }
+
+                    body > * {
+                        display: none !important;
+                    }
+
+                    .dashboard,
+                    .camera-panel,
+                    .video-frame,
+                    #videoStream {
+                        display: block !important;
+                    }
+
+                    .dashboard {
+                        position: fixed !important;
+                        inset: 0 !important;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+
+                    .camera-panel {
+                        position: fixed !important;
+                        inset: 0 !important;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: 0 !important;
+                        border-radius: 0 !important;
+                        background: #000 !important;
+                    }
+
+                    .camera-panel .panel-heading {
+                        display: none !important;
+                    }
+
+                    .video-frame {
+                        position: fixed !important;
+                        inset: 0 !important;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: 0 !important;
+                        border-radius: 0 !important;
+                        background: #000 !important;
+                    }
+
+                    #videoStream {
+                        position: fixed !important;
+                        inset: 0 !important;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        object-fit: contain !important;
+                        background: #000 !important;
+                    }
+                `;
+
+                const previous =
+                    document.getElementById(
+                        'roadeye-app-fullscreen-style'
+                    );
+
+                if (previous) {
+                    previous.remove();
+                }
+
+                document.head.appendChild(
+                    style
+                );
+            })();
+            """,
+            null
+        );
+
+        button.setText(
+            "Salir"
+        );
+    }
+
+
+    private void exitCameraFullscreen(
+        Button button
+    ) {
+        cameraFullscreen = false;
+
+        webView.evaluateJavascript(
+            """
+            (() => {
+                const style =
+                    document.getElementById(
+                        'roadeye-app-fullscreen-style'
+                    );
+
+                if (style) {
+                    style.remove();
+                }
+
+                delete document.body.dataset
+                    .roadeyeFullscreen;
+            })();
+            """,
+            null
+        );
+
+        showSystemBars();
+
+        setRequestedOrientation(
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        );
+
+        button.setText(
+            "Cámara"
+        );
+    }
+
+
+    private void hideSystemBars() {
+        if (
+            android.os.Build.VERSION.SDK_INT
+            >= android.os.Build.VERSION_CODES.R
+        ) {
+            WindowInsetsController controller =
+                getWindow().getInsetsController();
+
+            if (controller != null) {
+                controller.hide(
+                    WindowInsets.Type.systemBars()
+                );
+
+                controller.setSystemBarsBehavior(
+                    WindowInsetsController
+                        .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                );
+            }
+        } else {
+            getWindow().getDecorView()
+                .setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                );
+        }
+    }
+
+
+    private void showSystemBars() {
+        if (
+            android.os.Build.VERSION.SDK_INT
+            >= android.os.Build.VERSION_CODES.R
+        ) {
+            WindowInsetsController controller =
+                getWindow().getInsetsController();
+
+            if (controller != null) {
+                controller.show(
+                    WindowInsets.Type.systemBars()
+                );
+            }
+        } else {
+            getWindow().getDecorView()
+                .setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_VISIBLE
+                );
+        }
+    }
+
+
     private void loadRoadEye() {
 
         errorPanel.setVisibility(
@@ -214,6 +452,19 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+
+        if (cameraFullscreen) {
+
+            Button button = findViewById(
+                R.id.cameraFullscreenButton
+            );
+
+            exitCameraFullscreen(
+                button
+            );
+
+            return;
+        }
 
         if (
             webView != null
