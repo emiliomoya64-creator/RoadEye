@@ -20,28 +20,36 @@
         android:orientation="vertical"
         android:gravity="center"
         android:padding="32dp"
-        android:background="#111519"
+        android:background="#101418"
         android:visibility="gone"
     >
 
         <TextView
-            android:id="@+id/errorTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="RoadEye no disponible"
+            android:text="RoadEye"
             android:textColor="#FFFFFF"
-            android:textSize="22sp"
+            android:textSize="28sp"
             android:textStyle="bold"
         />
 
         <TextView
-            android:id="@+id/errorText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="Comprueba la conexión Wi-Fi con RoadEye."
-            android:textColor="#CCCCCC"
-            android:textSize="16sp"
+            android:text="No se puede conectar con RoadEye."
+            android:textColor="#DDDDDD"
+            android:textSize="17sp"
+            android:gravity="center"
+        />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Comprueba que el móvil está conectado a la red de RoadEye."
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
             android:gravity="center"
         />
 

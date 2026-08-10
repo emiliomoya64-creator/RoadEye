@@ -3,7 +3,6 @@ package com.roadeye.app;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.WebChromeClient;
@@ -22,6 +21,7 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private LinearLayout errorPanel;
+
 
     @Override
     protected void onCreate(
@@ -61,13 +61,8 @@ public class MainActivity extends Activity {
         WebSettings settings =
             webView.getSettings();
 
-        settings.setJavaScriptEnabled(
-            true
-        );
-
-        settings.setDomStorageEnabled(
-            true
-        );
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
 
         settings.setMediaPlaybackRequiresUserGesture(
             false
@@ -85,15 +80,15 @@ public class MainActivity extends Activity {
             true
         );
 
+        settings.setSupportZoom(
+            false
+        );
+
         settings.setBuiltInZoomControls(
             false
         );
 
         settings.setDisplayZoomControls(
-            false
-        );
-
-        settings.setSupportZoom(
             false
         );
 
@@ -111,39 +106,6 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(
             new WebViewClient() {
-
-                @Override
-                public boolean shouldOverrideUrlLoading(
-                    WebView view,
-                    WebResourceRequest request
-                ) {
-
-                    Uri uri =
-                        request.getUrl();
-
-                    String host =
-                        uri.getHost();
-
-                    if (
-                        host != null
-                        && (
-                            host.equals(
-                                "roadeye.local"
-                            )
-                            || host.startsWith(
-                                "192.168."
-                            )
-                            || host.startsWith(
-                                "10."
-                            )
-                        )
-                    ) {
-                        return false;
-                    }
-
-                    return true;
-                }
-
 
                 @Override
                 public void onPageFinished(
@@ -171,7 +133,6 @@ public class MainActivity extends Activity {
                     WebResourceRequest request,
                     WebResourceError error
                 ) {
-
                     super.onReceivedError(
                         view,
                         request,
@@ -220,8 +181,12 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
 
-        if (webView.canGoBack()) {
+        if (
+            webView != null
+            && webView.canGoBack()
+        ) {
             webView.goBack();
+
         } else {
             super.onBackPressed();
         }
@@ -233,11 +198,11 @@ public class MainActivity extends Activity {
 
         if (webView != null) {
 
+            webView.stopLoading();
+
             webView.loadUrl(
                 "about:blank"
             );
-
-            webView.stopLoading();
 
             webView.destroy();
         }

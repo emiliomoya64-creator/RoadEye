@@ -1,0 +1,72 @@
+name: Build RoadEye Android
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - trip-manager-v0.6.0
+
+    paths:
+      - "android/RoadEyeApp/**"
+      - ".github/workflows/build-roadeye-android.yml"
+
+jobs:
+
+  build-android:
+
+    name: Build RoadEye APK
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout RoadEye
+        uses: actions/checkout@v6
+
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+
+      - name: Install Android 36
+        run: |
+          sdkmanager \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+
+      - name: Setup Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.5.0"
+
+
+      - name: Build RoadEye APK
+        working-directory: android/RoadEyeApp
+        run: |
+          gradle \
+            --no-daemon \
+            assembleDebug
+
+
+      - name: Rename APK
+        run: |
+          cp \
+            android/RoadEyeApp/app/build/outputs/apk/debug/app-debug.apk \
+            RoadEye-0.1.0.apk
+
+
+      - name: Upload RoadEye APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RoadEye-Android-0.1.0
+          path: RoadEye-0.1.0.apk
+          if-no-files-found: error
