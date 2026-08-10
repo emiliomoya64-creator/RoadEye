@@ -5,6 +5,8 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -33,6 +35,8 @@ public class MainActivity extends Activity {
             R.layout.activity_main
         );
 
+        configureSystemBars();
+
         webView = findViewById(
             R.id.roadeyeWebView
         );
@@ -52,6 +56,36 @@ public class MainActivity extends Activity {
         );
 
         loadRoadEye();
+    }
+
+
+    private void configureSystemBars() {
+
+        getWindow().setStatusBarColor(
+            Color.BLACK
+        );
+
+        getWindow().setNavigationBarColor(
+            Color.BLACK
+        );
+
+        if (
+            android.os.Build.VERSION.SDK_INT
+            >= android.os.Build.VERSION_CODES.R
+        ) {
+
+            WindowInsetsController controller =
+                getWindow().getInsetsController();
+
+            if (controller != null) {
+
+                controller.setSystemBarsAppearance(
+                    0,
+                    WindowInsetsController
+                        .APPEARANCE_LIGHT_STATUS_BARS
+                );
+            }
+        }
     }
 
 
