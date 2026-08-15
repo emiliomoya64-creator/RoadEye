@@ -22,7 +22,7 @@ import android.widget.LinearLayout;
 public class MainActivity extends Activity {
 
     private static final String ROAD_EYE_URL =
-        "http://roadeye.local:8000/";
+        "http://192.168.10.21:8000/";
 
     private WebView webView;
     private LinearLayout errorPanel;
