@@ -60,6 +60,16 @@ class ParkingService:
         self._event_count = 0
         self._simulated_count = 0
 
+        # Estado real de Parking en tiempo de ejecución.
+        # Arranca según la configuración, pero puede
+        # activarse/desactivarse desde HUD/web/app.
+        self._enabled = bool(
+            config.get(
+                "parking.enabled",
+                False,
+            )
+        )
+
     @property
     def running(self) -> bool:
         return bool(
@@ -71,10 +81,7 @@ class ParkingService:
     @property
     def enabled(self) -> bool:
         return bool(
-            config.get(
-                "parking.enabled",
-                False,
-            )
+            self._enabled
         )
 
     def start(self) -> None:
@@ -117,6 +124,11 @@ class ParkingService:
 
     def activate(self) -> dict:
         with self._lock:
+            self._enabled = True
+            system_state.set(
+                "parking_enabled",
+                True,
+            )
             self._state = "watching"
             self._detector.reset()
 
@@ -124,6 +136,16 @@ class ParkingService:
 
     def deactivate(self) -> dict:
         with self._lock:
+            self._enabled = False
+            system_state.set(
+                "parking_enabled",
+                False,
+            )
+            system_state.set(
+                "parking_motion",
+                False,
+            )
+
             if self._event_started_at is not None:
                 self._finish_event_locked()
 

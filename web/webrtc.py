@@ -569,29 +569,11 @@ async def create_answer(
     offer_type: str,
 ) -> dict:
 
-    # Un único visor RoadEye.
-    if pcs:
-
-        old_pcs = tuple(
-            pcs
-        )
-
-        logger.info(
-            "Sustituyendo %d cliente(s) "
-            "WebRTC anterior(es)",
-            len(old_pcs),
-        )
-
-        await asyncio.gather(
-            *[
-                old_pc.close()
-                for old_pc in old_pcs
-            ],
-            return_exceptions=True,
-        )
-
-        pcs.clear()
-
+    # RoadEye permite varios visores WebRTC
+    # simultáneos (Web UI, app, etc.).
+    #
+    # Cada conexión se elimina individualmente
+    # cuando pasa a failed / closed / disconnected.
     pc = RTCPeerConnection()
 
     pcs.add(

@@ -149,10 +149,14 @@ class ActionBarWidget:
             row_h,
         )
 
+        # Estados visuales de Parking:
+        # gris    = apagado
+        # verde   = activado y vigilando
+        # naranja = movimiento / evento Parking
         if motion:
-            color = (40, 70, 255)
+            color = (0, 165, 255)
         elif enabled:
-            color = hud.primary_color()
+            color = self.COLOR_GREEN
         else:
             color = hud.muted_color()
 

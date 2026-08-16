@@ -4829,3 +4829,135 @@ window.addEventListener(
         }
     }
 );
+
+
+// ============================================================
+// RoadEye HUD táctil
+// ============================================================
+
+const hudRecordTouch =
+    document.getElementById(
+        "hudRecordTouch"
+    );
+
+const hudParkingTouch =
+    document.getElementById(
+        "hudParkingTouch"
+    );
+
+
+async function hudToggleRecording() {
+
+    try {
+        const response = await fetch(
+            "/api/record/status"
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                "No se pudo consultar grabación"
+            );
+        }
+
+        const data = await response.json();
+
+        const recording = Boolean(
+            data.recording
+        );
+
+        await setRecording(
+            recording
+                ? "stop"
+                : "start"
+        );
+
+    } catch (error) {
+        console.error(
+            "HUD REC:",
+            error
+        );
+    }
+}
+
+
+async function hudToggleParking() {
+
+    try {
+        const statusResponse = await fetch(
+            "/api/parking/status"
+        );
+
+        if (!statusResponse.ok) {
+            throw new Error(
+                "No se pudo consultar Parking"
+            );
+        }
+
+        const data =
+            await statusResponse.json();
+
+        const parking =
+            data.parking || {};
+
+        const enabled = Boolean(
+            parking.enabled
+        );
+
+        const endpoint = enabled
+            ? "/api/parking/deactivate"
+            : "/api/parking/activate";
+
+        console.log(
+            "HUD Parking:",
+            enabled
+                ? "desactivando"
+                : "activando"
+        );
+
+        const response = await fetch(
+            endpoint,
+            {
+                method: "POST"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                "No se pudo cambiar Parking"
+            );
+        }
+
+        const result =
+            await response.json();
+
+        console.log(
+            "HUD Parking resultado:",
+            result
+        );
+
+        await updateStatus();
+
+    } catch (error) {
+        console.error(
+            "HUD Parking:",
+            error
+        );
+    }
+}
+
+
+if (hudRecordTouch) {
+    hudRecordTouch.addEventListener(
+        "click",
+        hudToggleRecording
+    );
+}
+
+
+if (hudParkingTouch) {
+    hudParkingTouch.addEventListener(
+        "click",
+        hudToggleParking
+    );
+}
+
