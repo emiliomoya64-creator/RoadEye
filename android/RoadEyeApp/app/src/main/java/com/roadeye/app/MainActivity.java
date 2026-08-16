@@ -21,12 +21,16 @@ import android.widget.LinearLayout;
 
 public class MainActivity extends Activity {
 
-    private static final String ROAD_EYE_URL =
+    private static final String ROAD_EYE_DIRECT_URL =
+        "http://192.168.50.1:8000/";
+
+    private static final String ROAD_EYE_REMOTE_URL =
         "http://192.168.10.21:8000/";
 
     private WebView webView;
     private LinearLayout errorPanel;
     private boolean cameraFullscreen = false;
+    private boolean tryingRemoteUrl = false;
 
 
     @Override
@@ -190,6 +194,24 @@ public class MainActivity extends Activity {
                     if (
                         request.isForMainFrame()
                     ) {
+                        String failingUrl =
+                            request.getUrl().toString();
+
+                        if (
+                            failingUrl.startsWith(
+                                ROAD_EYE_DIRECT_URL
+                            )
+                            && !tryingRemoteUrl
+                        ) {
+                            tryingRemoteUrl = true;
+
+                            webView.loadUrl(
+                                ROAD_EYE_REMOTE_URL
+                            );
+
+                            return;
+                        }
+
                         showConnectionError();
                     }
                 }
@@ -439,6 +461,7 @@ public class MainActivity extends Activity {
 
 
     private void loadRoadEye() {
+        tryingRemoteUrl = false;
 
         errorPanel.setVisibility(
             View.GONE
@@ -449,7 +472,7 @@ public class MainActivity extends Activity {
         );
 
         webView.loadUrl(
-            ROAD_EYE_URL
+            ROAD_EYE_DIRECT_URL
         );
     }
 
