@@ -568,7 +568,7 @@ class RecorderService:
             command.extend(
                 [
                     "-b:v",
-                    "6000k",
+                    "3000k",
                     "-g",
                     str(
                         max(
