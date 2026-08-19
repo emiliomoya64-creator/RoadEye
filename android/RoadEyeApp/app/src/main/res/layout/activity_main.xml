@@ -13,6 +13,25 @@
         android:layout_height="match_parent"
     />
 
+    <TextView
+        android:id="@+id/connectionBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="18dp"
+        android:layout_marginEnd="18dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:background="#CC101418"
+        android:text="..."
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:elevation="12dp"
+    />
+
     <Button
         android:id="@+id/cameraFullscreenButton"
         android:layout_width="wrap_content"

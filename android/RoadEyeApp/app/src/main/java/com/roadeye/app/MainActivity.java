@@ -23,6 +23,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
@@ -34,6 +35,7 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private LinearLayout errorPanel;
+    private TextView connectionBadge;
     private boolean cameraFullscreen = false;
 
 
@@ -55,6 +57,10 @@ public class MainActivity extends Activity {
 
         errorPanel = findViewById(
             R.id.errorPanel
+        );
+
+        connectionBadge = findViewById(
+            R.id.connectionBadge
         );
 
         Button retryButton = findViewById(
@@ -500,10 +506,19 @@ public class MainActivity extends Activity {
             View.VISIBLE
         );
 
+        boolean direct =
+            isOnRoadEyeDirectNetwork();
+
         String url =
-            isOnRoadEyeDirectNetwork()
+            direct
                 ? ROAD_EYE_DIRECT_URL
                 : ROAD_EYE_REMOTE_URL;
+
+        connectionBadge.setText(
+            direct
+                ? "DIRECTA"
+                : "REMOTA"
+        );
 
         webView.loadUrl(
             url
