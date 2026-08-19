@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import socket
 import time
 
 import cv2
@@ -95,6 +96,127 @@ def _system_cpu_percent() -> float:
         return 0.0
 
 
+def _network_ipv4(
+    interface: str,
+) -> str | None:
+    try:
+        address_path = Path(
+            f"/sys/class/net/{interface}"
+        )
+
+        if not address_path.exists():
+            return None
+
+        import subprocess
+
+        result = subprocess.run(
+            [
+                "ip",
+                "-4",
+                "-o",
+                "addr",
+                "show",
+                "dev",
+                interface,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=1.0,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            return None
+
+        for line in result.stdout.splitlines():
+            parts = line.split()
+
+            if "inet" in parts:
+                index = parts.index("inet")
+                address = parts[index + 1]
+
+                return address.split("/")[0]
+
+    except Exception:
+        pass
+
+    return None
+
+
+def _network_interface_up(
+    interface: str,
+) -> bool:
+    try:
+        state = Path(
+            f"/sys/class/net/{interface}/operstate"
+        ).read_text().strip().lower()
+
+        return state == "up"
+
+    except OSError:
+        return False
+
+
+def _network_default_route() -> dict:
+    result = {
+        "interface": None,
+        "gateway": None,
+    }
+
+    try:
+        import subprocess
+
+        process = subprocess.run(
+            [
+                "ip",
+                "route",
+                "show",
+                "default",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=1.0,
+            check=False,
+        )
+
+        for line in process.stdout.splitlines():
+            parts = line.split()
+
+            if "dev" in parts:
+                result["interface"] = (
+                    parts[
+                        parts.index("dev") + 1
+                    ]
+                )
+
+            if "via" in parts:
+                result["gateway"] = (
+                    parts[
+                        parts.index("via") + 1
+                    ]
+                )
+
+            if result["interface"]:
+                break
+
+    except Exception:
+        pass
+
+    return result
+
+
+def _network_internet_available() -> bool:
+    try:
+        with socket.create_connection(
+            ("1.1.1.1", 53),
+            timeout=0.8,
+        ):
+            return True
+
+    except OSError:
+        return False
+
+
 @router.get("/api/system/status")
 async def system_status():
     total, used, free = shutil.disk_usage(
@@ -131,6 +253,37 @@ async def system_status():
     parking_status = {}
 
     services = {}
+
+    network_route = (
+        _network_default_route()
+    )
+
+    network_status = {
+        "ethernet": {
+            "interface": "eth0",
+            "up": _network_interface_up(
+                "eth0"
+            ),
+            "ip": _network_ipv4(
+                "eth0"
+            ),
+        },
+        "wifi_direct": {
+            "interface": "wlan0",
+            "up": _network_interface_up(
+                "wlan0"
+            ),
+            "ip": _network_ipv4(
+                "wlan0"
+            ),
+        },
+        "default_route": (
+            network_route
+        ),
+        "internet": (
+            _network_internet_available()
+        ),
+    }
 
     if roadeye_services_ref is not None:
         try:
@@ -210,6 +363,7 @@ async def system_status():
                 "unknown",
             ),
         },
+        "network": network_status,
         "services": services,
     }
 

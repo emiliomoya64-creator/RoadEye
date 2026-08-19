@@ -240,6 +240,18 @@ export function renderSystem(system) {
     const parking =
         system.parking || {};
 
+    const network =
+        system.network || {};
+
+    const ethernet =
+        network.ethernet || {};
+
+    const wifiDirect =
+        network.wifi_direct || {};
+
+    const defaultRoute =
+        network.default_route || {};
+
     setContent(`
         <div class="system-live-header">
             <div>
@@ -466,6 +478,99 @@ export function renderSystem(system) {
                         ${
                             parking.state
                             || "desconocido"
+                        }
+                    </strong>
+                </div>
+            </article>
+
+
+            <article class="settings-card">
+                <span class="eyebrow">
+                    Red
+                </span>
+
+                <h2>Conectividad</h2>
+
+                <div class="form-row">
+                    <span>
+                        <strong>Ethernet</strong>
+                        <small>
+                            ${ethernet.ip || "Sin IP"}
+                        </small>
+                    </span>
+
+                    ${
+                        ethernet.up
+                            ? badge(
+                                "Conectado",
+                                "ok"
+                            )
+                            : badge(
+                                "Desconectado",
+                                "danger"
+                            )
+                    }
+                </div>
+
+                <div class="form-row">
+                    <span>
+                        <strong>
+                            RoadEye-Direct
+                        </strong>
+                        <small>
+                            ${wifiDirect.ip || "Sin IP"}
+                        </small>
+                    </span>
+
+                    ${
+                        wifiDirect.up
+                            ? badge(
+                                "Activo",
+                                "ok"
+                            )
+                            : badge(
+                                "Inactivo",
+                                "warning"
+                            )
+                    }
+                </div>
+
+                <div class="form-row">
+                    <span>
+                        <strong>Internet</strong>
+                        <small>
+                            Salida por
+                            ${
+                                defaultRoute.interface
+                                || "--"
+                            }
+                        </small>
+                    </span>
+
+                    ${
+                        network.internet
+                            ? badge(
+                                "Disponible",
+                                "ok"
+                            )
+                            : badge(
+                                "Sin conexión",
+                                "danger"
+                            )
+                    }
+                </div>
+
+                <div class="form-row">
+                    <span>
+                        <strong>
+                            Puerta de enlace
+                        </strong>
+                    </span>
+
+                    <strong>
+                        ${
+                            defaultRoute.gateway
+                            || "--"
                         }
                     </strong>
                 </div>
