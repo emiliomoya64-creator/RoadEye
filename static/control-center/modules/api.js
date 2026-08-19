@@ -144,3 +144,10 @@ export function saveHudSettings(
         }
     );
 }
+
+
+export function fetchSystemStatus() {
+    return requestJson(
+        "/api/system/status"
+    );
+}

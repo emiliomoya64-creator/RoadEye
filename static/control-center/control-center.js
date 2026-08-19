@@ -9,7 +9,8 @@ import {
     runStorageCleanup,
     simulateParkingEvent,
     fetchHudSettings,
-    saveHudSettings
+    saveHudSettings,
+    fetchSystemStatus
 } from "./modules/api.js";
 
 import {
@@ -43,15 +44,21 @@ import {
     renderHud
 } from "./modules/hud.js";
 
+import {
+    renderSystem
+} from "./modules/system.js";
+
 const state = {
     settings: {},
     storage: {},
     parkingRuntime: {},
     parkingHistory: [],
     hud: {},
+    system: {},
     activeSection: "overview",
     dirty: false,
-    parkingTimer: null
+    parkingTimer: null,
+    systemTimer: null
 };
 
 
@@ -61,7 +68,8 @@ const titles = {
     recording: "Grabación",
     camera: "Cámara",
     parking: "Modo Parking",
-    hud: "HUD"
+    hud: "HUD",
+    system: "Sistema"
 };
 
 
@@ -78,6 +86,7 @@ async function initialize() {
     await reloadData();
 
     startParkingPolling();
+    startSystemPolling();
 }
 
 
@@ -88,14 +97,16 @@ async function reloadData() {
             storageResponse,
             parkingResponse,
             historyResponse,
-            hudResponse
+            hudResponse,
+            systemResponse
         ] = await Promise.all(
             [
                 fetchSettings(),
                 fetchStorageStatus(),
                 fetchParkingStatus(),
                 fetchParkingHistory(20),
-                fetchHudSettings()
+                fetchHudSettings(),
+                fetchSystemStatus()
             ]
         );
 
@@ -119,6 +130,10 @@ async function reloadData() {
             hudResponse.hud || {}
         );
 
+        state.system = (
+            systemResponse || {}
+        );
+
         state.dirty = false;
 
         setConnection(true);
@@ -131,6 +146,53 @@ async function reloadData() {
         showMessage(
             error.message,
             "error"
+        );
+    }
+}
+
+
+function startSystemPolling() {
+
+    if (state.systemTimer) {
+        clearInterval(
+            state.systemTimer
+        );
+    }
+
+    state.systemTimer = setInterval(
+        refreshSystemStatus,
+        5000
+    );
+}
+
+
+async function refreshSystemStatus() {
+
+    if (
+        state.activeSection !== "system"
+    ) {
+        return;
+    }
+
+    try {
+        const response =
+            await fetchSystemStatus();
+
+        state.system =
+            response || {};
+
+        renderSystem(
+            state.system
+        );
+
+        setConnection(true);
+
+    } catch (error) {
+        setConnection(false);
+
+        console.error(
+            "Sistema RoadEye:",
+            error
         );
     }
 }
