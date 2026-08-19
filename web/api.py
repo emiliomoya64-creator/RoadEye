@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import time
 
 import cv2
 from datetime import datetime
@@ -23,6 +24,7 @@ router = APIRouter()
 recorder: Optional[RecorderService] = None
 storage_manager = None
 camera_service = None
+roadeye_services_ref = None
 
 
 def _videos_directory() -> Path:
@@ -42,6 +44,174 @@ def _videos_directory() -> Path:
         )
 
     return configured_folder.resolve()
+
+
+def _system_temperature() -> float:
+    try:
+        raw = Path(
+            "/sys/class/thermal/thermal_zone0/temp"
+        ).read_text().strip()
+
+        return round(
+            float(raw) / 1000.0,
+            1,
+        )
+
+    except (
+        OSError,
+        ValueError,
+    ):
+        return 0.0
+
+
+def _system_cpu_percent() -> float:
+    try:
+        load_1min = (
+            Path("/proc/loadavg")
+            .read_text()
+            .split()[0]
+        )
+
+        load = float(load_1min)
+
+        cpu_count = (
+            __import__("os").cpu_count()
+            or 1
+        )
+
+        return round(
+            min(
+                100.0,
+                load / cpu_count * 100.0,
+            ),
+            1,
+        )
+
+    except (
+        OSError,
+        ValueError,
+        IndexError,
+    ):
+        return 0.0
+
+
+@router.get("/api/system/status")
+async def system_status():
+    total, used, free = shutil.disk_usage(
+        PROJECT_DIR
+    )
+
+    disk_percent = (
+        used / total * 100
+        if total
+        else 0
+    )
+
+    uptime_seconds = 0.0
+
+    try:
+        uptime_seconds = float(
+            Path("/proc/uptime")
+            .read_text()
+            .split()[0]
+        )
+    except (
+        OSError,
+        ValueError,
+        IndexError,
+    ):
+        pass
+
+    recorder_status = (
+        recorder.status()
+        if recorder is not None
+        else {}
+    )
+
+    parking_status = {}
+
+    services = {}
+
+    if roadeye_services_ref is not None:
+        try:
+            services = (
+                roadeye_services_ref.status()
+            )
+        except Exception:
+            services = {}
+
+        try:
+            parking_status = (
+                roadeye_services_ref
+                .parking
+                .status()
+            )
+        except Exception:
+            parking_status = {}
+
+    return {
+        "raspberry": {
+            "cpu_percent":
+                _system_cpu_percent(),
+            "temperature_c":
+                _system_temperature(),
+            "uptime_seconds":
+                uptime_seconds,
+        },
+        "storage": {
+            "total_bytes": total,
+            "used_bytes": used,
+            "free_bytes": free,
+            "used_percent": round(
+                disk_percent,
+                1,
+            ),
+        },
+        "camera": {
+            "available": (
+                camera_service is not None
+            ),
+            "front_camera": system_state.get(
+                "front_camera"
+            ),
+        },
+        "gps": {
+            "fix": system_state.get(
+                "gps_fix"
+            ),
+            "satellites": system_state.get(
+                "satellites"
+            ),
+            "speed": system_state.get(
+                "speed"
+            ),
+        },
+        "recording": {
+            "service_running":
+                recorder_status.get(
+                    "service_running",
+                    False,
+                ),
+            "recording":
+                recorder_status.get(
+                    "recording",
+                    False,
+                ),
+        },
+        "parking": {
+            "enabled": system_state.get(
+                "parking_enabled"
+            ),
+            "motion": system_state.get(
+                "parking_motion"
+            ),
+            "state": parking_status.get(
+                "state",
+                "unknown",
+            ),
+        },
+        "services": services,
+    }
 
 
 @router.get("/api/status")

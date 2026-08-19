@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 api.recorder = roadeye_services.recorder
 api.camera_service = roadeye_services.camera
+api.roadeye_services_ref = roadeye_services
 api.storage_manager = storage_manager
 api.parking_service = roadeye_services.parking
 

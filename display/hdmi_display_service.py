@@ -1,5 +1,6 @@
 import logging
 import time
+from pathlib import Path
 from threading import Event, Thread
 from typing import Optional
 
@@ -40,6 +41,7 @@ class HDMIDisplayService:
     """
 
     PIPELINE_RETRY_SECONDS = 3.0
+    HDMI_CHECK_SECONDS = 2.0
 
     def __init__(
         self,
@@ -121,6 +123,42 @@ class HDMIDisplayService:
     # Bucle principal
     # -------------------------------------------------
 
+    def _hdmi_connected(self) -> bool:
+        """
+        Comprueba si existe al menos una salida HDMI conectada.
+        """
+        drm_path = Path(
+            "/sys/class/drm"
+        )
+
+        try:
+            status_files = list(
+                drm_path.glob(
+                    "card*-HDMI-A-*/status"
+                )
+            )
+
+            for status_file in status_files:
+                try:
+                    status = (
+                        status_file
+                        .read_text()
+                        .strip()
+                        .lower()
+                    )
+
+                    if status == "connected":
+                        return True
+
+                except OSError:
+                    continue
+
+        except OSError:
+            pass
+
+        return False
+
+
     def _service_loop(self) -> None:
         """
         Mantiene la salida HDMI activa.
@@ -130,6 +168,22 @@ class HDMIDisplayService:
         """
 
         while not self._stop_event.is_set():
+
+            if not self._hdmi_connected():
+
+                if self._pipeline is not None:
+                    logger.info(
+                        "HDMI desconectado. "
+                        "Cerrando salida de vídeo."
+                    )
+                    self._close_pipeline()
+
+                self._stop_event.wait(
+                    self.HDMI_CHECK_SECONDS
+                )
+
+                continue
+
             if self._pipeline is None:
                 try:
                     self._open_pipeline()
