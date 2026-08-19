@@ -22,6 +22,7 @@ router = APIRouter()
 
 recorder: Optional[RecorderService] = None
 storage_manager = None
+camera_service = None
 
 
 def _videos_directory() -> Path:
@@ -2651,6 +2652,34 @@ def _settings_validate(
         {},
     )
 
+    camera_raw = payload.get(
+        "camera",
+        {},
+    )
+
+    if not isinstance(
+        camera_raw,
+        dict,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="La sección camera no es válida.",
+        )
+
+    camera_front_raw = camera_raw.get(
+        "front",
+        {},
+    )
+
+    if not isinstance(
+        camera_front_raw,
+        dict,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="La cámara frontal no es válida.",
+        )
+
     for section_name, section in (
         ("storage", storage_raw),
         ("recording", recording_raw),
@@ -2808,6 +2837,23 @@ def _settings_validate(
                 )
             ),
         },
+        "camera": {
+            "front": {
+                "flip_horizontal": bool(
+                    camera_front_raw.get(
+                        "flip_horizontal",
+                        False,
+                    )
+                ),
+                "flip_vertical": bool(
+                    camera_front_raw.get(
+                        "flip_vertical",
+                        False,
+                    )
+                ),
+            },
+        },
+
         "parking": {
             "enabled": bool(
                 parking_raw.get(
@@ -2927,6 +2973,10 @@ async def settings_get():
                 "recording",
                 {},
             ),
+            "camera": data.get(
+                "camera",
+                {},
+            ),
             "parking": data.get(
                 "parking",
                 {},
@@ -2960,9 +3010,36 @@ async def settings_update(
         ):
             current = {}
 
-        current.update(
-            values
-        )
+        if (
+            section == "camera"
+            and isinstance(
+                values.get("front"),
+                dict,
+            )
+        ):
+            current_front = current.get(
+                "front",
+                {},
+            )
+
+            if not isinstance(
+                current_front,
+                dict,
+            ):
+                current_front = {}
+
+            current_front.update(
+                values["front"]
+            )
+
+            current["front"] = (
+                current_front
+            )
+
+        else:
+            current.update(
+                values
+            )
 
         data[
             section
@@ -2971,6 +3048,34 @@ async def settings_update(
     _settings_atomic_write(
         data
     )
+
+    # Aplicar en caliente la orientación de cámara.
+    # No es necesario reiniciar RoadEye.
+    camera_values = validated.get(
+        "camera",
+        {},
+    ).get(
+        "front",
+        {},
+    )
+
+    if (
+        camera_service is not None
+        and camera_values
+    ):
+        camera_service.flip_horizontal = bool(
+            camera_values.get(
+                "flip_horizontal",
+                False,
+            )
+        )
+
+        camera_service.flip_vertical = bool(
+            camera_values.get(
+                "flip_vertical",
+                False,
+            )
+        )
 
     return {
         "ok": True,

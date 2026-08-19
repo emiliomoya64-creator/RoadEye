@@ -30,6 +30,10 @@ import {
 } from "./modules/recording.js";
 
 import {
+    renderCamera
+} from "./modules/camera.js";
+
+import {
     renderParking,
     updateParkingRuntime
 } from "./modules/parking.js";
@@ -55,6 +59,7 @@ const titles = {
     overview: "Resumen",
     storage: "Almacenamiento",
     recording: "Grabación",
+    camera: "Cámara",
     parking: "Modo Parking",
     hud: "HUD"
 };
@@ -187,6 +192,13 @@ function renderActiveSection() {
     ) {
         renderRecording(
             state.settings.recording || {}
+        );
+
+    } else if (
+        state.activeSection === "camera"
+    ) {
+        renderCamera(
+            state.settings.camera || {}
         );
 
     } else if (
@@ -413,30 +425,51 @@ function collectSectionValues() {
 
         parking: {
             ...(state.settings.parking || {})
+        },
+
+        camera: {
+            ...(state.settings.camera || {})
         }
     };
 
     document.querySelectorAll(
         "[data-setting]"
     ).forEach((element) => {
-        const [
-            section,
-            key
-        ] = element.dataset.setting.split(
-            "."
-        );
-
-        if (
-            section
-            && key
-            && result[section]
-        ) {
-            result[section][key] = (
-                readFieldValue(
-                    element
-                )
+        const parts =
+            element.dataset.setting.split(
+                "."
             );
+
+        if (parts.length < 2) {
+            return;
         }
+
+        const section = parts.shift();
+
+        if (!result[section]) {
+            return;
+        }
+
+        let target = result[section];
+
+        while (parts.length > 1) {
+            const key = parts.shift();
+
+            if (
+                !target[key]
+                || typeof target[key] !== "object"
+            ) {
+                target[key] = {};
+            }
+
+            target = target[key];
+        }
+
+        target[parts[0]] = (
+            readFieldValue(
+                element
+            )
+        );
     });
 
     return result;

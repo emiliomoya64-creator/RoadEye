@@ -12,7 +12,9 @@
             "width": 1280,
             "height": 720,
             "format": "RGB888",
-            "fps": 30
+            "fps": 30,
+            "flip_horizontal": false,
+            "flip_vertical": false
         },
         "rear": {
             "enabled": false,
@@ -59,8 +61,8 @@
     "recording": {
         "enabled": false,
         "folder": "videos",
-        "fps": 20,
-        "segment_seconds": 30,
+        "fps": 20.0,
+        "segment_seconds": 180.0,
         "protect_events": true
     },
     "hud": {
@@ -126,8 +128,8 @@
     },
     "storage": {
         "enabled": true,
-        "max_usage_percent": 85,
-        "minimum_free_gb": 10,
+        "max_usage_percent": 85.0,
+        "minimum_free_gb": 10.0,
         "check_interval_seconds": 60,
         "clean_on_start": true,
         "clean_before_recording": true,
@@ -140,11 +142,11 @@
     "parking": {
         "enabled": false,
         "trigger": "motion_or_impact",
-        "pre_event_seconds": 10,
-        "record_seconds": 30,
-        "extend_seconds": 15,
-        "max_event_seconds": 120,
-        "cooldown_seconds": 5,
+        "pre_event_seconds": 10.0,
+        "record_seconds": 15.0,
+        "extend_seconds": 15.0,
+        "max_event_seconds": 120.0,
+        "cooldown_seconds": 5.0,
         "motion_sensitivity": 0.55,
         "protect_recording": true,
         "capture_photo": false

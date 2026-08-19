@@ -1,4 +1,5 @@
 import logging
+import cv2
 import time
 from threading import Event, Thread
 from typing import Optional
@@ -68,6 +69,20 @@ class CameraService:
         )
 
         self.frame_interval = 1.0 / self.target_fps
+
+        self.flip_horizontal = bool(
+            config.get(
+                "camera.front.flip_horizontal",
+                False,
+            )
+        )
+
+        self.flip_vertical = bool(
+            config.get(
+                "camera.front.flip_vertical",
+                False,
+            )
+        )
 
         self.picam2: Optional[Picamera2] = None
         self._capture_thread: Optional[Thread] = None
@@ -244,6 +259,28 @@ class CameraService:
                 frame = self.picam2.capture_array()
 
                 if frame is not None:
+
+                    if (
+                        self.flip_horizontal
+                        and self.flip_vertical
+                    ):
+                        frame = cv2.flip(
+                            frame,
+                            -1
+                        )
+
+                    elif self.flip_horizontal:
+                        frame = cv2.flip(
+                            frame,
+                            1
+                        )
+
+                    elif self.flip_vertical:
+                        frame = cv2.flip(
+                            frame,
+                            0
+                        )
+
                     frame_buffer.set_frame(
                         frame
                     )
