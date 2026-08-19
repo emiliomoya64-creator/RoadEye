@@ -233,14 +233,45 @@ export function renderParking(
 
                 <h2>Tiempos</h2>
 
-                ${timeField(
-                    "Duración inicial",
-                    "parking.record_seconds",
-                    parking.record_seconds ?? 30,
-                    5,
-                    600,
-                    5
-                )}
+                <label class="form-row">
+                    <span>
+                        <strong>
+                            Duración de grabación
+                        </strong>
+
+                        <small>
+                            Tiempo inicial al detectar movimiento.
+                        </small>
+                    </span>
+
+                    <select
+                        data-setting="parking.record_seconds"
+                    >
+                        <option value="15" ${
+                            Number(parking.record_seconds ?? 30) === 15
+                                ? "selected"
+                                : ""
+                        }>
+                            15 segundos
+                        </option>
+
+                        <option value="20" ${
+                            Number(parking.record_seconds ?? 30) === 20
+                                ? "selected"
+                                : ""
+                        }>
+                            20 segundos
+                        </option>
+
+                        <option value="30" ${
+                            Number(parking.record_seconds ?? 30) === 30
+                                ? "selected"
+                                : ""
+                        }>
+                            30 segundos
+                        </option>
+                    </select>
+                </label>
 
                 ${timeField(
                     "Extensión con movimiento",

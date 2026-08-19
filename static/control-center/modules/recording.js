@@ -47,22 +47,33 @@ export function renderRecording(
                         </small>
                     </span>
 
-                    <span class="input-unit">
-                        <input
-                            type="number"
-                            min="10"
-                            max="600"
-                            step="5"
-                            value="${
-                                recording
-                                .segment_seconds ?? 30
-                            }"
-                            data-setting=
-                                "recording.segment_seconds"
-                        >
+                    <select
+                        data-setting="recording.segment_seconds"
+                    >
+                        <option value="60" ${
+                            Number(recording.segment_seconds ?? 60) === 60
+                                ? "selected"
+                                : ""
+                        }>
+                            1 minuto
+                        </option>
 
-                        <b>s</b>
-                    </span>
+                        <option value="180" ${
+                            Number(recording.segment_seconds ?? 60) === 180
+                                ? "selected"
+                                : ""
+                        }>
+                            3 minutos
+                        </option>
+
+                        <option value="300" ${
+                            Number(recording.segment_seconds ?? 60) === 300
+                                ? "selected"
+                                : ""
+                        }>
+                            5 minutos
+                        </option>
+                    </select>
                 </label>
 
                 <label class="form-row">
@@ -99,7 +110,7 @@ export function renderRecording(
                 </h3>
 
                 <p>
-                    20 FPS y segmentos de 30 segundos
+                    20 FPS y segmentos de 1, 3 o 5 minutos
                     ofrecen buen equilibrio entre calidad,
                     consumo de CPU y facilidad de revisión.
                 </p>
