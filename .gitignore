@@ -52,3 +52,4 @@ photos/
 *.before-storage-manager
 
 *.before-control-center
+config/*.last-good
