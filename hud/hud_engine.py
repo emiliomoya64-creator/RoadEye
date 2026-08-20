@@ -273,6 +273,121 @@ class HUDEngine:
 
     # ----------------------------------------------------
 
+    def rounded_rect(
+        self,
+        frame,
+        *,
+        x,
+        y,
+        w,
+        h,
+        radius=18,
+        color=(10, 13, 15),
+        alpha=0.65,
+    ):
+        """
+        Rectángulo semitransparente con
+        esquinas redondeadas.
+        """
+
+        x = int(x)
+        y = int(y)
+        w = int(w)
+        h = int(h)
+
+        radius = int(
+            max(
+                1,
+                min(
+                    radius,
+                    w // 2,
+                    h // 2,
+                ),
+            )
+        )
+
+        overlay = frame.copy()
+
+        x2 = x + w
+        y2 = y + h
+
+        cv2.rectangle(
+            overlay,
+            (x + radius, y),
+            (x2 - radius, y2),
+            color,
+            -1,
+            cv2.LINE_AA,
+        )
+
+        cv2.rectangle(
+            overlay,
+            (x, y + radius),
+            (x2, y2 - radius),
+            color,
+            -1,
+            cv2.LINE_AA,
+        )
+
+        cv2.circle(
+            overlay,
+            (x + radius, y + radius),
+            radius,
+            color,
+            -1,
+            cv2.LINE_AA,
+        )
+
+        cv2.circle(
+            overlay,
+            (x2 - radius, y + radius),
+            radius,
+            color,
+            -1,
+            cv2.LINE_AA,
+        )
+
+        cv2.circle(
+            overlay,
+            (x + radius, y2 - radius),
+            radius,
+            color,
+            -1,
+            cv2.LINE_AA,
+        )
+
+        cv2.circle(
+            overlay,
+            (x2 - radius, y2 - radius),
+            radius,
+            color,
+            -1,
+            cv2.LINE_AA,
+        )
+
+        cv2.addWeighted(
+            overlay,
+            max(
+                0.0,
+                min(
+                    1.0,
+                    float(alpha),
+                ),
+            ),
+            frame,
+            1.0 - max(
+                0.0,
+                min(
+                    1.0,
+                    float(alpha),
+                ),
+            ),
+            0,
+            frame,
+        )
+
+
+
     def transparent_rect(
         self,
         frame,
